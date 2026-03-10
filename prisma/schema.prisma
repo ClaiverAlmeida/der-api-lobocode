@@ -1,0 +1,1094 @@
+// ===============================================
+// PRISMA SCHEMA - DEPARTAMENTO ESTADUAL DE RODOVIAS (Sistema de Gestão)
+// ===============================================
+// Modelos, enums e campos em inglês; comentários em português.
+// Sem @map: nomes das colunas = camelCase no banco.
+// ===============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===============================================
+// ENUMS - ROLES E USUÁRIOS
+// ===============================================
+
+enum Roles {
+  SYSTEM_ADMIN // Administrador da plataforma
+  ADMIN // Admin geral - acesso total
+  COMERCIAL // Comercial - clientes, agendamentos, atendimentos
+  LOGISTICS // Logístico - agendamentos, containers, estoque
+  DRIVER // Motorista - ordens de serviço, recibos
+}
+
+enum UserStatus {
+  ACTIVE // Ativo
+  INACTIVE // Inativo
+  PENDING // Pendente
+  ON_LEAVE // Em férias
+  TERMINATED // Demitido
+}
+
+enum PermissionType {
+  CLIENTS // Clientes
+  APPOINTMENTS // Agendamentos
+  STOCK // Estoque
+  CONTAINERS // Containers
+  FINANCE // Financeiro
+  REPORTS // Relatórios
+  SERVICE // Atendimentos
+  HR // RH
+  ROUTES // Rotas
+  DRIVER // Motorista
+}
+
+// ===============================================
+// ENUMS - DOMÍNIO DEPARTAMENTO ESTADUAL DE RODOVIAS
+// ===============================================
+
+enum ClientStatus {
+  ACTIVE // Ativo
+  INACTIVE // Inativo
+}
+
+enum AppointmentStatus {
+  PENDING // Pendente
+  CONFIRMED // Confirmado
+  COLLECTED // Coletado
+  CANCELLED // Cancelado
+}
+
+enum ContainerType {
+  C20FT // 20ft
+  C40FT // 40ft
+  C40FTHC // 40ft HC
+  C45FTHC // 45ft HC
+}
+
+enum ContainerStatus {
+  PREPARATION // Preparação
+  SHIPPED // Enviado
+  IN_TRANSIT // Em trânsito
+  DELIVERED // Entregue
+  CANCELLED // Cancelado
+}
+
+enum TransactionType {
+  REVENUE // Receita
+  EXPENSE // Despesa
+}
+
+enum ProductType {
+  SMALL_BOX // Caixa Pequena
+  MEDIUM_BOX // Caixa Média
+  LARGE_BOX // Caixa Grande
+  PERSONALIZED_ITEM // Item Personalizado
+  TAPE_ADHESIVE // Fita Adesiva
+}
+
+enum UserContractType {
+  CLT // CLT
+  PJ // PJ
+  TEMPORARY // Temporário
+  INTERNSHIP // Estágio
+}
+
+enum DriverServiceOrderStatus {
+  PENDING // Pendente
+  IN_PROGRESS // Em andamento
+  COMPLETED // Concluída
+}
+
+enum LeadStatus {
+  NEW // Novo
+  QUALIFYING // Qualificando
+  QUOTE // Orçamento
+  NEGOTIATING // Negociando
+  CLOSED // Fechado
+  LOST // Perdido
+}
+
+enum LeadPriority {
+  high // Alta
+  medium // Média
+  low // Baixa
+}
+
+enum LeadConversationSender {
+  CLIENT // Cliente
+  BOT // Bot
+  AGENT // Atendente
+}
+
+enum AssetType {
+  CAMERA // Câmera
+  SENSOR // Sensor
+  EQUIPMENT // Outro equipamento de campo
+}
+
+enum AssetConnectionType {
+  API
+  WEBHOOK
+}
+
+enum AssetStatus {
+  ONLINE // Operacional
+  OFFLINE // Offline
+  CRITICAL // Falha crítica
+  WARNING // Atenção
+}
+
+enum AssetCriticality {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum HighwayStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum WorkOrderPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum WorkOrderStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkOrderType {
+  PREVENTIVE
+  CORRECTIVE
+  EMERGENCY
+}
+
+enum WorkOrderSlaStatus {
+  OK
+  WARNING
+  OVERDUE
+}
+
+// ===============================================
+// ARQUIVOS E DOCUMENTOS
+// ===============================================
+
+enum FileType {
+  PROFILE_IMAGE
+  DOCUMENT
+  REPORT
+  VIDEO
+  AUDIO
+  OTHER
+}
+
+enum DocumentRecipientType {
+  HR
+  SUPERVISOR
+  ADMIN
+}
+
+enum DocumentStatus {
+  PENDING
+  VIEWED
+  DOWNLOADED
+}
+
+enum NotificationGroupType {
+  ROLE
+  SECTOR
+  CUSTOM
+}
+
+enum NotificationTargetType {
+  USER
+  ROLE
+  GROUP
+  COMPANY
+  CUSTOM
+}
+
+enum StockMovementType {
+  ENTRY // Entrada
+  EXIT // Saída
+}
+
+// ===============================================
+// EMPRESA E MULTI-TENANCY
+// ===============================================
+
+model Company {
+  id           String  @id @default(cuid())
+  name         String
+  cnpj         String  @unique
+  website      String?
+  address      String?
+  country      String?
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+
+  users User[]
+
+  clients        Client[]
+  assets         Asset[]
+  highways       Highway[]
+  workOrders     WorkOrder[]
+  stock          Stock?
+  appointments   Appointment[]
+  containers     Container[]
+  transactions   Transaction[]
+  routes         Route[]
+  deliveryPrices DeliveryPrice[]
+  productPrices  ProductPrice[]
+  leads          Lead[]
+
+  files              File[]              @relation("CompanyFiles")
+  documents          Document[]          @relation("CompanyDocuments")
+  notifications      Notification[]      @relation("CompanyNotifications")
+  notificationGroups NotificationGroup[] @relation("CompanyNotificationGroups")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([cnpj])
+  @@index([name])
+  @@index([deletedAt])
+}
+
+model User {
+  id             String     @id @default(cuid())
+  name           String
+  email          String     @unique
+  login          String     @unique
+  password       String?
+  role           Roles
+  company        Company?   @relation(fields: [companyId], references: [id])
+  companyId      String?
+  profilePicture String?
+  registration   String?    @unique
+  status         UserStatus @default(ACTIVE)
+
+  rg      String? @unique
+  cpf     String? @unique
+  phone   String?
+  address Json?
+
+  birthDate       DateTime?   @db.Date
+  hireDate        DateTime?   @db.Date
+  terminationDate DateTime?   @db.Date
+  salary          Float?
+  contractType    UserContractType?
+  documents       Json?
+  benefits        String[]    @default([])
+
+  permissions    Permission[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  rg      String? @unique
+  cpf     String? @unique
+  phone   String?
+  address String?
+
+  employee       Employee?
+  stockMovements StockMovement[]
+  oauthAccounts  OAuthAccount[]
+  clients        Client[]
+  appointments   Appointment[]
+
+  files             File[]                    @relation("UserFiles")
+  documentsSent     Document[]                @relation("DocumentSender")
+  notifications     NotificationRecipient[]   @relation("UserNotifications")
+  groupMemberships  NotificationGroupMember[] @relation("UserGroupMemberships")
+  pushSubscriptions PushSubscription[]        @relation("UserPushSubscriptions")
+  history           ClientHistory[]           @relation("UserClientHistory")
+  serviceOrders     DriverServiceOrder[]      @relation("DriverOrders")
+  attendantOrders   DriverServiceOrder[]      @relation("AttendantOrders")
+  assignedWorkOrders WorkOrder[]              @relation("WorkOrderAssignee")
+  workOrderComments  WorkOrderComment[]       @relation("WorkOrderCommentsAuthor")
+
+  @@index([companyId])
+  @@index([email])
+  @@index([cpf])
+  @@index([status])
+  @@index([deletedAt])
+  @@index([role])
+  @@index([createdAt])
+}
+
+// Contas OAuth vinculadas ao usuário (Google, Microsoft)
+model OAuthAccount {
+  id           String    @id @default(cuid())
+  provider     String    // "google" | "microsoft"
+  providerId   String    // ID único do provider
+  accessToken  String?   @db.Text
+  refreshToken String?   @db.Text
+  expiresAt    DateTime?
+  email        String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([provider, providerId])
+  @@index([userId])
+  @@index([provider])
+}
+
+model Permission {
+  id             String         @id @default(cuid())
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  permissionType PermissionType
+  granted        Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([userId, permissionType])
+  @@index([userId])
+  @@index([permissionType])
+}
+
+// ===============================================
+// CLIENTES
+// ===============================================
+
+model Client {
+  id String @id @default(cuid())
+
+  usaName  String
+  usaCpf   String?
+  usaPhone String
+
+  brazilName  String
+  brazilCpf   String?
+  brazilPhone String
+
+  usaAddress    Json
+  brazilAddress Json
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status ClientStatus @default(ACTIVE)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  history      ClientHistory[]
+  appointments Appointment[]
+  transactions Transaction[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([status])
+  @@index([brazilName])
+  @@index([brazilCpf])
+  @@index([deletedAt])
+}
+
+model ClientHistory {
+  id String @id @default(cuid())
+
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  entityId   String?
+  entityType String?
+
+  actionType String?
+  message    String
+
+  ownerId String?
+  owner   User?   @relation("UserClientHistory", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  fieldsChanged Json?
+
+  createdAt DateTime @default(now())
+}
+
+// ===============================================
+// ESTOQUE (um registro por Company)
+// ===============================================
+
+model Stock {
+  id                String @id @default(cuid())
+  smallBoxes        Int?   @default(0)
+  mediumBoxes       Int?   @default(0)
+  largeBoxes        Int?   @default(0)
+  adhesiveTape      Int?   @default(0)
+  personalizedItems Int?   @default(0)
+
+  companyId String  @unique
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  stockMovements StockMovement[]
+
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+model StockMovement {
+  id          String            @id @default(cuid())
+  type        StockMovementType
+  productType ProductType
+  quantity    Int
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  observations String?
+
+  stockId String
+  stock   Stock  @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   ProductPrice @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ===============================================
+// ATIVOS EM CAMPO (câmeras, sensores, equipamentos)
+// ===============================================
+
+model Asset {
+  id                String              @id @default(cuid())
+  companyId         String
+  name              String
+  code              String?
+  type              AssetType
+  highway           String
+  km                Float
+  direction         String
+  status            AssetStatus         @default(ONLINE)
+  criticality       AssetCriticality    @default(MEDIUM)
+  latitude          Float?
+  longitude         Float?
+  lastSignalAt      DateTime?
+  connectionType    AssetConnectionType?
+  connectionUrl     String?
+  connectionToken   String?
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  workOrders WorkOrder[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([highway])
+  @@index([status])
+  @@index([criticality])
+  @@index([connectionType])
+  @@index([deletedAt])
+}
+
+// ===============================================
+// RODOVIAS
+// ===============================================
+
+model Highway {
+  id          String         @id @default(cuid())
+  companyId   String
+  code        String
+  name        String
+  uf          String
+  startKm     Float?
+  endKm       Float?
+  status      HighwayStatus  @default(ACTIVE)
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([code])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+// ===============================================
+// ORDENS DE SERVIÇO (manutenção de ativos)
+// ===============================================
+
+model WorkOrder {
+  id               String              @id @default(cuid())
+  companyId        String
+  assetId          String
+  title            String
+  description      String?
+  priority         WorkOrderPriority
+  status           WorkOrderStatus     @default(PENDING)
+  type             WorkOrderType
+  assignedToUserId String?
+  dueDate          DateTime?
+  slaDeadlineHours Int?
+  slaStatus        WorkOrderSlaStatus? @default(OK)
+
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  asset          Asset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assignedToUser User?     @relation("WorkOrderAssignee", fields: [assignedToUserId], references: [id])
+
+  checklistItems WorkOrderChecklistItem[]
+  comments       WorkOrderComment[]
+  evidences      WorkOrderEvidence[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  createdBy String?
+  updatedBy String?
+
+  @@index([companyId])
+  @@index([assetId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueDate])
+  @@index([deletedAt])
+}
+
+model WorkOrderChecklistItem {
+  id          String  @id @default(cuid())
+  workOrderId String
+  label       String
+  isDone      Boolean @default(false)
+  sortOrder   Int?
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workOrderId])
+}
+
+model WorkOrderComment {
+  id          String @id @default(cuid())
+  workOrderId String
+  authorId    String
+  text        String @db.Text
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  author    User      @relation("WorkOrderCommentsAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([workOrderId])
+  @@index([authorId])
+}
+
+model WorkOrderEvidence {
+  id          String @id @default(cuid())
+  workOrderId String
+  fileId      String
+  description String?
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  file      File      @relation("WorkOrderEvidenceFile", fields: [fileId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([workOrderId])
+  @@index([fileId])
+}
+
+// ===============================================
+// AGENDAMENTOS
+// ===============================================
+
+model Appointment {
+  id             String   @id @default(cuid())
+  /// Data da coleta (apenas data, sem horário). Persistida como DATE; na API usar ISO YYYY-MM-DD.
+  collectionDate DateTime @db.Date
+  collectionTime String?
+
+  address      String
+  status       AppointmentStatus @default(PENDING)
+  observations String?
+
+  qtyBoxes Int
+
+  companyId String
+  clientId  String
+  userId    String
+  routeId   String?
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company      Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client       Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  route        Route?              @relation(fields: [routeId], references: [id])
+  serviceOrder DriverServiceOrder?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([clientId])
+  @@index([collectionDate])
+  @@index([status])
+  @@index([routeId])
+  @@index([deletedAt])
+}
+
+// ===============================================
+// CONTAINERS (containers de carga)
+// ===============================================
+
+model Container {
+  id               String          @id @default(cuid())
+  companyId        String
+  number           String
+  type             ContainerType?
+  origin           String?
+  destination      String?
+  boardingDate     DateTime?       @db.Date
+  estimatedArrival DateTime?       @db.Date
+  status           ContainerStatus @default(PREPARATION)
+  volume           Float?
+  trackingLink     String?
+  weightLimit      Int
+
+  // shipmentDate     DateTime        @db.Date
+  // totalWeight      Float
+
+  company Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  boxes   ContainerBox[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([number])
+  @@index([companyId])
+  @@index([status])
+  // @@index([shipmentDate])
+  @@index([deletedAt])
+}
+
+model ContainerBox {
+  id          String @id @default(cuid())
+  containerId String
+  clientId    String
+  clientName  String
+  boxNumber   String
+  size        String
+  weight      Float
+
+  container Container @relation(fields: [containerId], references: [id], onDelete: Cascade)
+
+  @@index([containerId])
+  @@index([clientId])
+}
+
+// ===============================================
+// TRANSAÇÕES (Financeiro)
+// ===============================================
+
+model Transaction {
+  id            String          @id @default(cuid())
+  companyId     String
+  clientId      String
+  clientName    String
+  type          TransactionType
+  category      String
+  value         Float
+  date          DateTime        @db.Date
+  description   String
+  paymentMethod String
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([clientId])
+  @@index([date])
+  @@index([type])
+  @@index([deletedAt])
+}
+
+// ===============================================
+// ROTAS
+// ===============================================
+
+model Route {
+  id             String   @id @default(cuid())
+  companyId      String
+  date           DateTime @db.Date
+  optimizedRoute String[]
+  totalDistance  Float
+  estimatedTime  Int
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([date])
+  @@index([deletedAt])
+}
+
+// ===============================================
+// PREÇOS
+// ===============================================
+
+model DeliveryPrice {
+  id               String  @id @default(cuid())
+  companyId        String
+  originCity       String
+  originState      String
+  destinationCity  String
+  destinationState String
+  pricePerKg       Float
+  minimumPrice     Float
+  deliveryDeadline Int
+  active           Boolean @default(true)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([active])
+  @@index([deletedAt])
+}
+
+model ProductPrice {
+  id            String      @id @default(cuid())
+  companyId     String
+  type          ProductType
+  name          String
+  dimensions    String?
+  maxWeight     Float?
+  costPrice     Float
+  salePrice     Float
+  active        Boolean     @default(true)
+  variablePrice Boolean     @default(false)
+
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([type])
+  @@index([active])
+  @@index([deletedAt])
+}
+
+// ===============================================
+// ORDEM DE SERVIÇO (Motorista)
+// ===============================================
+// driver: User que executa a entrega (role DRIVER)
+// attendant: User que atende/gerencia (role COMERCIAL ou outro)
+
+model DriverServiceOrder {
+  id              String                   @id @default(cuid())
+  appointmentId   String                   @unique
+  sender          Json
+  recipient       Json
+  boxes           Json
+  clientSignature String?
+  agentSignature  String?
+  signatureDate   DateTime
+  userId          String
+  driverName      String
+  attendantId     String?
+  attendantName   String?
+  status          DriverServiceOrderStatus @default(PENDING)
+  notes           String?
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  driver      User        @relation("DriverOrders", fields: [userId], references: [id], onDelete: Cascade)
+  attendant   User?       @relation("AttendantOrders", fields: [attendantId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([appointmentId])
+  @@index([userId])
+  @@index([attendantId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+// ===============================================
+// LEADS / PIPELINE (Atendimentos)
+// ===============================================
+
+model Lead {
+  id             String        @id @default(cuid())
+  companyId      String
+  name           String
+  phone          String
+  email          String?
+  origin         String
+  destination    String
+  lastMessage    String
+  lastMessageAt  DateTime
+  status         LeadStatus    @default(NEW)
+  servedByBot    Boolean       @default(true)
+  estimatedValue Float?
+  moveDate       DateTime?     @db.Date
+  tags           String[]      @default([])
+  notes          String?
+  priority       LeadPriority?
+
+  company       Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  conversations LeadConversation[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([status])
+  @@index([lastMessageAt])
+  @@index([priority])
+  @@index([deletedAt])
+}
+
+model LeadConversation {
+  id     String                 @id @default(cuid())
+  leadId String
+  text   String                 @db.Text
+  sender LeadConversationSender
+  date   DateTime               @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([date])
+}
+
+// ===============================================
+// ARQUIVOS
+// ===============================================
+
+model File {
+  id           String   @id @default(cuid())
+  originalName String
+  fileName     String   @unique
+  type         FileType
+  size         Int
+  mimeType     String
+  url          String   @unique
+  description  String?
+
+  companyId      String?
+  company        Company?  @relation("CompanyFiles", fields: [companyId], references: [id])
+  uploadedBy     String?
+  uploadedByUser User?     @relation("UserFiles", fields: [uploadedBy], references: [id])
+  document       Document? @relation("DocumentFile")
+  workOrderEvidences WorkOrderEvidence[] @relation("WorkOrderEvidenceFile")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([uploadedBy])
+  @@index([type])
+  @@index([fileName])
+  @@index([url])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+// ===============================================
+// DOCUMENTOS
+// ===============================================
+
+model Document {
+  id            String                @id @default(cuid())
+  recipientType DocumentRecipientType
+  description   String?
+  status        DocumentStatus        @default(PENDING)
+
+  fileId    String   @unique
+  file      File     @relation("DocumentFile", fields: [fileId], references: [id])
+  senderId  String
+  sender    User     @relation("DocumentSender", fields: [senderId], references: [id])
+  companyId String?
+  company   Company? @relation("CompanyDocuments", fields: [companyId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([senderId])
+  @@index([recipientType])
+  @@index([status])
+  @@index([companyId])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+// ===============================================
+// NOTIFICAÇÕES
+// ===============================================
+
+model Notification {
+  id         String  @id @default(cuid())
+  title      String
+  message    String
+  entityType String?
+  entityId   String?
+
+  companyId       String?
+  company         Company? @relation("CompanyNotifications", fields: [companyId], references: [id])
+  createdByUserId String?
+
+  recipients NotificationRecipient[] @relation("NotificationRecipients")
+  targets    NotificationTarget[]    @relation("NotificationTargets")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([companyId])
+  @@index([entityType])
+  @@index([entityId])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model NotificationRecipient {
+  id     String    @id @default(cuid())
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  notificationId String
+  notification   Notification @relation("NotificationRecipients", fields: [notificationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([notificationId, userId])
+  @@index([userId])
+  @@index([notificationId])
+  @@index([isRead])
+  @@index([readAt])
+}
+
+model NotificationGroup {
+  id           String                @id @default(cuid())
+  name         String
+  description  String?
+  type         NotificationGroupType
+  isActive     Boolean               @default(true)
+  roleFilter   Roles?
+  sectorFilter String?
+
+  companyId     String
+  company       Company                   @relation("CompanyNotificationGroups", fields: [companyId], references: [id])
+  members       NotificationGroupMember[] @relation("GroupMembers")
+  notifications NotificationTarget[]      @relation("GroupNotifications")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  createdBy String?
+
+  @@index([companyId])
+  @@index([type])
+  @@index([isActive])
+  @@index([roleFilter])
+  @@index([deletedAt])
+}
+
+model NotificationGroupMember {
+  id      String            @id @default(cuid())
+  groupId String
+  group   NotificationGroup @relation("GroupMembers", fields: [groupId], references: [id], onDelete: Cascade)
+  userId  String
+  user    User              @relation("UserGroupMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  addedBy   String?
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+}
+
+model NotificationTarget {
+  id      String                 @id @default(cuid())
+  type    NotificationTargetType
+  userId  String?
+  roleId  Roles?
+  groupId String?
+
+  notificationId String
+  notification   Notification       @relation("NotificationTargets", fields: [notificationId], references: [id], onDelete: Cascade)
+  targetGroup    NotificationGroup? @relation("GroupNotifications", fields: [groupId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([notificationId])
+  @@index([type])
+  @@index([userId])
+  @@index([roleId])
+  @@index([groupId])
+}
+
+// ===============================================
+// PUSH NOTIFICATIONS (notificações push)
+// ===============================================
+
+model PushSubscription {
+  id       String @id @default(cuid())
+  endpoint String @unique
+  p256dh   String
+  auth     String
+  userId   String
+  user     User   @relation("UserPushSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([endpoint])
+}

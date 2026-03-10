@@ -1,0 +1,43 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "npm",
+            "script": "build",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "label": "npm: build",
+            "detail": "nest build",
+            "problemMatcher": ["$tsc"]
+        },
+        {
+            "type": "npm",
+            "script": "db:init:dev",
+            "label": "npm: db:init:dev",
+            "detail": "Initialize database for development",
+            "problemMatcher": []
+        },
+        {
+            "type": "npm",
+            "script": "prisma:seed",
+            "label": "npm: prisma:seed",
+            "detail": "Seed database",
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Setup DB and Build",
+            "command": "npm run db:init:dev && npm run prisma:seed && npm run build",
+            "group": "build",
+            "problemMatcher": ["$tsc"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
+        }
+    ]
+}
+
+

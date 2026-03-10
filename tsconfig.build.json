@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "test",
+    "dist",
+    "**/*spec.ts",
+    "src/modules/checkpoints",
+    "src/modules/patrols",
+    "src/modules/panic-events",
+    "src/modules/reports",
+    "src/modules/shifts",
+    "src/modules/posts",
+    "src/modules/vehicle"
+  ]
+}

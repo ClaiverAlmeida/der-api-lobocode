@@ -1,0 +1,143 @@
+
+### ========================
+### 🔐 LOGIN E TOKENS
+### ========================
+
+
+###
+# @name adminLogin
+POST http://localhost:30100/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@user.com",
+  "password": "admivvvn"
+}
+
+###
+# @name readerLogin
+POST http://localhost:30100/auth/login
+Content-Type: application/json
+
+{
+  "email": "reader@user.com",
+  "password": "reader"
+}
+
+###
+# @name writerLogin
+POST http://localhost:30100/auth/login
+Content-Type: application/json
+
+{
+  "email": "writer@user.com",
+  "password": "writer"
+}
+
+### Tokens extraídos das respostas anteriores
+@tokenAdmin = {{adminLogin.response.body.access_token}}
+@tokenReader = {{readerLogin.response.body.access_token}}
+@tokenWriter = {{writerLogin.response.body.access_token}}
+
+### ========================
+### 👤 CRIAÇÃO DE USUÁRIOS
+### ========================
+
+###
+# 👤 Admin (sem token)
+POST http://localhost:30100/users
+Content-Type: application/json
+
+{
+  "name": "Admin",
+  "email": "admin@user.com",
+  "password": "admin",
+  "role": "ADMIN"
+}
+
+###
+# 👤 Reader
+POST http://localhost:30100/users
+Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
+
+{
+  "name": "Reader",
+  "email": "reader@user.com",
+  "password": "reader",
+  "role": "READER"
+}
+
+###
+# 👤 Writer com permissões
+POST http://localhost:30100/users
+Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
+
+{
+  "name": "Writer",
+  "email": "writer@user.com",
+  "password": "writer",
+  "role": "WRITER",
+  "permissions": [
+    {
+      "action": "read",
+      "resource": "User"
+    },
+    {
+      "action": "update",
+      "resource": "Post",
+      "condition": {
+        "id": "1"
+      }
+    }
+  ]
+}
+
+### ========================
+### 📝 POSTS
+### ========================
+
+###
+# Criar Post (Admin)
+POST http://localhost:30100/posts
+Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
+
+{
+  "title": "My first post",
+  "content": "This is the content of my first post.",
+  "published": false
+}
+
+###
+# Listar todos os posts (Reader)
+GET http://localhost:30100/posts
+Authorization: Bearer {{tokenAdmin}}
+
+###
+# Obter post específico (Reader)
+GET http://localhost:30100/posts/cm8z70heh0001s9r7ick5369u
+Authorization: Bearer {{tokenReader}}
+
+### ========================
+### 📄 USERS
+### ========================
+
+###
+# Listar todos os usuários (Admin)
+GET http://localhost:30100/users
+Authorization: Bearer {{tokenAdmin}}
+
+###
+# Obter usuário específico
+GET http://localhost:30100/users/cm8z3gmns0002s9sywsjk9upq
+
+### ========================
+### 🏠 ROOT (TESTE DE AUTENTICAÇÃO)
+### ========================
+
+###
+# Testar acesso à rota raiz (Reader)
+GET http://localhost:30100/
+Authorization: Bearer {{tokenReader}}

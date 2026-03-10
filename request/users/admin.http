@@ -1,0 +1,141 @@
+@baseUrl = http://localhost:30100
+@token = {{ adminLogin.response.body.access_token }}
+
+### Login ADMIN
+# @name adminLogin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "admin@user.com",
+    "password": "SystemAdmin123@Senha"
+}
+
+### ========================================
+### USERS - ADMIN (Próprio Tenant)
+### ========================================
+
+### Listar usuários da própria empresa
+GET {{baseUrl}}/users 
+Authorization: Bearer {{token}}
+
+### Buscar usuário específico da própria empresa
+GET {{baseUrl}}/users/cmco084n70001lt96th7lafk8
+Authorization: Bearer {{token}}
+
+### Atualizar usuário da própria empresa
+PATCH {{baseUrl}}/users/cmco084n70001lt96th7lafk8
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "name": "Usuário Atualizado",
+    "active": true
+}
+
+### Deletar usuário da própria empresa
+DELETE {{baseUrl}}/users/cmco084n70001lt96th7lafk8
+Authorization: Bearer {{token}}
+
+### ========================================
+### CREATE USERS - ADMIN (Próprio Tenant)
+### ========================================
+
+### Criar HR na própria empresa
+POST {{baseUrl}}/users/hr
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "name": "HR da Empresa",
+    "email": "hr.empresa@user.com",
+    "password": "SystemAdmin123@Senha",
+    "companyId": "cmco084kk0000lt96pxlqot9s"
+}
+
+### Criar GUARD na própria empresa
+POST {{baseUrl}}/users/guard
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "name": "Guard da Empresa",
+    "email": "guard.empresa@user.com",
+    "password": "SystemAdmin123@Senha",
+    "companyId": "cmco084kk0000lt96pxlqot9s",
+    "unitIds": ["unit_id_1", "unit_id_2"]
+}
+
+### Criar RESIDENT na própria empresa
+POST {{baseUrl}}/users/resident
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "name": "Resident da Empresa",
+    "email": "resident.empresa@user.com",
+    "password": "SystemAdmin123@Senha",
+    "companyId": "cmco084kk0000lt96pxlqot9s",
+    "unitId": "unit_id_1"
+}
+
+### ========================================
+### POSTS - ADMIN (Próprio Tenant)
+### ========================================
+
+### Listar posts da própria empresa
+GET {{baseUrl}}/posts
+Authorization: Bearer {{token}}
+
+### Criar post na própria empresa
+POST {{baseUrl}}/posts
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "title": "Post da Empresa",
+    "content": "Conteúdo do post da empresa"
+}
+
+### ========================================
+### TESTES DE SEGURANÇA - ADMIN
+### ========================================
+
+### ❌ TENTATIVA: Listar usuários de outra empresa (deve falhar)
+GET {{baseUrl}}/users?companyId=outra_empresa_id
+Authorization: Bearer {{token}}
+
+### ❌ TENTATIVA: Criar usuário em outra empresa (deve falhar)
+POST {{baseUrl}}/users/hr
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "name": "HR Outra Empresa",
+    "email": "hr.outra@user.com",
+    "password": "SystemAdmin123@Senha",
+    "companyId": "outra_empresa_id"
+}
+
+### ❌ TENTATIVA: Criar SYSTEM_ADMIN (deve falhar - só SYSTEM_ADMIN pode)
+POST {{baseUrl}}/users/system-admin
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "name": "Tentativa Platform Admin",
+    "email": "tentativa@user.com",
+    "password": "SystemAdmin123@Senha"
+}
+
+### ❌ TENTATIVA: Criar ADMIN (deve falhar - só SYSTEM_ADMIN pode)
+POST {{baseUrl}}/users/admin
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "name": "Tentativa Admin",
+    "email": "tentativa.admin@user.com",
+    "password": "SystemAdmin123@Senha",
+    "companyId": "cmco084kk0000lt96pxlqot9s"
+} 

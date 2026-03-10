@@ -1,0 +1,124 @@
+services:
+  # Backend NestJS
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: departamento-estadual-rodovias-backend
+    env_file:
+      - .env
+    ports:
+      - '30100:3000' # departamento-estadual-rodovias: bloco 30xxx
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.2'
+    restart: unless-stopped
+    networks:
+      - app-net-departamento-estadual-rodovias
+
+  # Database PostgreSQL
+  db:
+    image: postgres:16.8-alpine3.20
+    container_name: departamento-estadual-rodovias-db
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+    ports:
+      - '15432:5432' # departamento-estadual-rodovias: bloco 15xxx
+    volumes:
+      - departamento-estadual-rodovias-api-lobocode_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.2'
+    restart: unless-stopped
+    networks:
+      - app-net-departamento-estadual-rodovias
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: departamento-estadual-rodovias-redis
+    ports:
+      - '16379:6379' # departamento-estadual-rodovias: bloco 16xxx
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.2'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    restart: unless-stopped
+    networks:
+      - app-net-departamento-estadual-rodovias
+
+  # MinIO - Armazenamento de Arquivos
+  minio:
+    image: minio/minio:latest
+    container_name: departamento-estadual-rodovias-minio
+    env_file:
+      - .env
+    ports:
+      - '19000:9000' # departamento-estadual-rodovias: bloco 19xxx
+      - '19001:9001' # departamento-estadual-rodovias: bloco 19xxx
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-password123}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+        reservations:
+          memory: 256M
+          cpus: '0.1'
+    restart: unless-stopped
+    networks:
+      - app-net-departamento-estadual-rodovias
+
+volumes:
+  departamento-estadual-rodovias-api-lobocode_postgres_data:
+    external: true
+  redis_data:
+  minio_data:
+
+networks:
+  app-net-departamento-estadual-rodovias:
+    external: true

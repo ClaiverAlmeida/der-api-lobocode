@@ -1,0 +1,116 @@
+@tokenAdmin = {{ adminLogin.response.body.access_token }}
+@tokenHR = {{ hrLogin.response.body.access_token }}
+
+
+
+### 
+# @name hrLogin
+POST http://localhost:30100/auth/login
+Content-Type: application/json
+
+{
+    "email": "hr@user.com",
+    "password": "SystemAdmin123@Senha"
+}
+
+###
+GET http://localhost:30100/users 
+Authorization: Bearer {{tokenHR}}
+
+###
+GET http://localhost:30100/users/cmco084n70001lt96th7lafk8
+Authorization: Bearer {{tokenHR}}
+
+###
+# @name adminLogin
+POST http://localhost:30100/auth/login
+Content-Type: application/json
+
+{
+    "email": "systemadmin@user.com",
+    "password": "SystemAdmin123@Senha"
+}
+###
+GET http://localhost:30100/users 
+Authorization: Bearer {{tokenAdmin}}
+###
+GET http://localhost:30100/users?companyId=cmco084kk0000lt96pxlqot9s
+Authorization: Bearer {{tokenAdmin}}
+
+###
+GET http://localhost:30100/users/cmco084n70001lt96th7lafk8
+Authorization: Bearer {{tokenAdmin}}
+
+###
+GET http://localhost:30100/posts
+Authorization: Bearer {{tokenAdmin}}
+
+###
+GET http://localhost:30100/products
+Authorization: Bearer {{tokenAdmin}}
+
+### Create Platform Admin
+POST http://localhost:30100/users/system-admin
+Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
+
+{
+    "name": "Platform Admin",
+    "email": "systemadmin@user.com",
+    "password": "SystemAdmin123@Senha",
+    "role": "SYSTEM_ADMIN"
+}
+
+### Create Admin
+POST http://localhost:30100/users/admin
+Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
+
+{
+    "name": "Admin",
+    "email": "admin2@user.com",
+    "password": "SystemAdmin123@Senha",
+    "companyId": "cmco084kk0000lt96pxlqot9s",
+    "role": "ADMIN"
+}
+
+### Create Guard
+POST http://localhost:30100/users/guard
+Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
+
+{
+    "name": "Guard",
+    "email": "guard@user.com",
+    "password": "SystemAdmin123@Senha",
+    "companyId": "cmco084kk0000lt96pxlqot9s",
+    "unitIds": ["<unit_id1>", "<unit_id2>"],
+    "role": "GUARD"
+}
+
+### Create HR
+POST http://localhost:30100/users/hr
+Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
+
+{
+    "name": "HR",
+    "email": "hr@user.com",
+    "password": "SystemAdmin123@Senha",
+    "companyId": "cmco084kk0000lt96pxlqot9s",
+    "role": "HR"
+}
+
+### Create Resident
+POST http://localhost:30100/users/resident
+Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
+
+{
+    "name": "Resident",
+    "email": "resident@user.com",
+    "password": "SystemAdmin123@Senha",
+    "companyId": "cmco084kk0000lt96pxlqot9s",
+    "unitId": "<unit_id>",
+    "role": "RESIDENT"
+}

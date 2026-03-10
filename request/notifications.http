@@ -1,0 +1,228 @@
+### =============================================================================
+### ARQUIVO HTTP - TESTE DE NOTIFICAÇÕES
+### Sistema: DEPARTAMENTO ESTADUAL DE RODOVIAS Engine
+### Módulo: Notifications
+### =============================================================================
+
+# Configuração de variáveis
+@baseUrl = http://localhost:30100
+@contentType = application/json
+
+# Variáveis de teste (preencher após fazer login)
+@accessToken = 
+@notificationId = 
+
+
+# Configuração de variáveis
+@baseUrl = http://localhost:30100
+@contentType = application/json
+
+# Variáveis de autenticação (serão preenchidas após login)
+@accessToken = {{ systemAdminLogin.response.body.access_token }}
+@refreshToken = {{ systemAdminLogin.response.body.refresh_token }}
+
+@resetToken = 
+
+### =============================================================================
+### 1. AUTENTICAÇÃO BÁSICA
+### =============================================================================
+
+### 1.1 Login - Autenticação com email/login
+
+
+### Login SYSTEM_ADMIN
+# @name systemAdminLogin
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "System Admin Claiver",
+  "password": "SystemAdmin123@Senha"
+}
+
+
+### =============================================================================
+### 1. BUSCAR NOTIFICAÇÕES DO USUÁRIO
+### =============================================================================
+
+### 1.1 Buscar todas as notificações (paginação padrão)
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{accessToken}}
+
+### 1.2 Buscar notificações com filtros
+GET {{baseUrl}}/notifications?page=1&limit=5&isRead=false
+Authorization: Bearer {{accessToken}}
+
+### 1.3 Buscar notificações por tipo de entidade
+GET {{baseUrl}}/notifications?entityType=report&page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### 1.4 Buscar notificações lidas
+GET {{baseUrl}}/notifications?isRead=true&page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 2. CONTADOR DE NOTIFICAÇÕES NÃO LIDAS
+### =============================================================================
+
+### 2.1 Obter contador de notificações não lidas
+GET {{baseUrl}}/notifications/unread-count
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 3. BUSCAR NOTIFICAÇÕES RECENTES
+### =============================================================================
+
+### 3.1 Buscar últimas 10 notificações não lidas
+GET {{baseUrl}}/notifications/recent
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 4. ESTATÍSTICAS DE NOTIFICAÇÕES
+### =============================================================================
+
+### 4.1 Obter estatísticas completas do usuário
+GET {{baseUrl}}/notifications/stats
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 5. MARCAR NOTIFICAÇÕES COMO LIDAS
+### =============================================================================
+
+### 5.1 Marcar notificação específica como lida
+# Preencher o @notificationId com um ID real
+PUT {{baseUrl}}/notifications/{{notificationId}}/read
+Authorization: Bearer {{accessToken}}
+
+### 5.2 Marcar todas as notificações como lidas
+PUT {{baseUrl}}/notifications/read-all
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 6. REAGIR A NOTIFICAÇÕES
+### =============================================================================
+
+### 6.1 Reagir a uma notificação específica
+# Preencher o @notificationId com um ID real
+PUT {{baseUrl}}/notifications/{{notificationId}}/react
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 7. ARQUIVAR NOTIFICAÇÕES
+### =============================================================================
+
+### 7.1 Arquivar notificação específica
+# Preencher o @notificationId com um ID real
+PUT {{baseUrl}}/notifications/{{notificationId}}/archive
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 8. TESTES COM DADOS ESPECÍFICOS (EXEMPLOS)
+### =============================================================================
+
+### 8.1 Teste com ID específico - Marcar como lida
+PUT {{baseUrl}}/notifications/cm123abc/read
+Authorization: Bearer {{accessToken}}
+
+### 8.2 Teste com ID específico - Reagir
+PUT {{baseUrl}}/notifications/cm123abc/react
+Authorization: Bearer {{accessToken}}
+
+### 8.3 Teste com ID específico - Arquivar
+PUT {{baseUrl}}/notifications/cm123abc/archive
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 9. TESTES DE ERROR HANDLING
+### =============================================================================
+
+### 9.1 Tentar marcar notificação inexistente como lida (Error 404/400)
+PUT {{baseUrl}}/notifications/notificacao-inexistente/read
+Authorization: Bearer {{accessToken}}
+
+### 9.2 Tentar reagir a notificação inexistente (Error 404/400)
+PUT {{baseUrl}}/notifications/notificacao-inexistente/react
+Authorization: Bearer {{accessToken}}
+
+### 9.3 Tentar buscar notificações sem token (Error 401)
+GET {{baseUrl}}/notifications
+
+### 9.4 Tentar buscar com token inválido (Error 401)
+GET {{baseUrl}}/notifications
+Authorization: Bearer token-invalido
+
+### =============================================================================
+### 10. TESTES DE PAGINAÇÃO E LIMITES
+### =============================================================================
+
+### 10.1 Teste de paginação - Página 1
+GET {{baseUrl}}/notifications?page=1&limit=3
+Authorization: Bearer {{accessToken}}
+
+### 10.2 Teste de paginação - Página 2
+GET {{baseUrl}}/notifications?page=2&limit=3
+Authorization: Bearer {{accessToken}}
+
+### 10.3 Teste com limite alto
+GET {{baseUrl}}/notifications?page=1&limit=50
+Authorization: Bearer {{accessToken}}
+
+### 10.4 Teste com limite baixo
+GET {{baseUrl}}/notifications?page=1&limit=1
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 11. TESTES COMBINADOS DE FILTROS
+### =============================================================================
+
+### 11.1 Filtrar por tipo e status
+GET {{baseUrl}}/notifications?entityType=occurrence&isRead=false&page=1&limit=5
+Authorization: Bearer {{accessToken}}
+
+### 11.2 Filtrar apenas por status
+GET {{baseUrl}}/notifications?isRead=true&page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### 11.3 Filtrar apenas por tipo
+GET {{baseUrl}}/notifications?entityType=shift&page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 12. FLUXO COMPLETO DE TESTE
+### =============================================================================
+
+### 12.1 Passo 1: Verificar contador inicial
+GET {{baseUrl}}/notifications/unread-count
+Authorization: Bearer {{accessToken}}
+
+### 12.2 Passo 2: Buscar notificações não lidas
+GET {{baseUrl}}/notifications?isRead=false&page=1&limit=5
+Authorization: Bearer {{accessToken}}
+
+### 12.3 Passo 3: Reagir à primeira notificação (substitua o ID)
+PUT {{baseUrl}}/notifications/SUBSTITUA_PELO_ID_REAL/react
+Authorization: Bearer {{accessToken}}
+
+### 12.4 Passo 4: Verificar contador após reação
+GET {{baseUrl}}/notifications/unread-count
+Authorization: Bearer {{accessToken}}
+
+### 12.5 Passo 5: Marcar todas como lidas
+PUT {{baseUrl}}/notifications/read-all
+Authorization: Bearer {{accessToken}}
+
+### 12.6 Passo 6: Verificar contador final
+GET {{baseUrl}}/notifications/unread-count
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### NOTAS IMPORTANTES
+### =============================================================================
+# 
+# 1. Substitua {{accessToken}} por um token válido obtido do login
+# 2. Substitua {{notificationId}} por IDs reais de notificações
+# 3. Todos os endpoints requerem autenticação (Bearer token)
+# 4. Os endpoints PUT são idempotentes (pode chamar múltiplas vezes)
+# 5. Teste primeiro com dados válidos, depois com dados inválidos
+# 
+### =============================================================================

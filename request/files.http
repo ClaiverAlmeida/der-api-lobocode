@@ -1,0 +1,150 @@
+### =============================================================================
+### ARQUIVO HTTP - TESTE DO MÓDULO DE ARMAZENAMENTO DE ARQUIVOS (SIMPLIFICADO)
+### Sistema: DEPARTAMENTO ESTADUAL DE RODOVIAS Engine
+### Módulo: Files
+### =============================================================================
+
+# Configuração de variáveis
+@baseUrl = http://localhost:30100
+@contentType = application/json
+
+# Variáveis de teste (preencher após os testes)
+@accessToken = 
+@refreshToken = 
+
+### =============================================================================
+### 1. AUTENTICAÇÃO - OBTER TOKEN
+### =============================================================================
+
+### 1.1 Login para obter token
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "systemadmin@user.com",
+  "password": "SystemAdmin123@Senha"
+}
+
+### Extrair token da resposta
+@accessToken = {{login.response.body.access_token}}
+
+### =============================================================================
+### 2. UPLOAD DE ARQUIVOS
+### =============================================================================
+
+### 2.1 Upload de documento
+# @name uploadDocument
+POST {{baseUrl}}/files/upload?type=DOCUMENT&description=Relatório mensal de segurança
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+Authorization: Bearer {{accessToken}}
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="documento.pdf"
+Content-Type: application/pdf
+
+< ./test-files/documento.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 2.2 Upload de imagem
+# @name uploadImage
+POST {{baseUrl}}/files/upload?type=PROFILE_IMAGE&description=Imagem de perfil
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+Authorization: Bearer {{accessToken}}
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="profile.jpg"
+Content-Type: image/jpeg
+
+< ./test-files/profile.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 2.3 Upload de vídeo
+# @name uploadVideo
+POST {{baseUrl}}/files/upload?type=VIDEO&description=Gravação de ocorrência
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+Authorization: Bearer {{accessToken}}
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="ocorrencia.mp4"
+Content-Type: video/mp4
+
+< ./test-files/ocorrencia.mp4
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### =============================================================================
+### 3. CONSULTA DE ARQUIVOS
+### =============================================================================
+
+### 3.1 Listar todos os arquivos (com paginação)
+GET {{baseUrl}}/files?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### 3.2 Buscar arquivo por ID
+# @name getFileById
+GET {{baseUrl}}/files/{{uploadDocument.response.body.id}}
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 4. GESTÃO DE ARQUIVOS
+### =============================================================================
+
+### 4.1 Deletar arquivo
+DELETE {{baseUrl}}/files/{{uploadVideo.response.body.id}}
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 5. TESTES DE VALIDAÇÃO E ERROS
+### =============================================================================
+
+### 5.1 Upload sem autenticação (deve retornar 401)
+POST {{baseUrl}}/files/upload?type=DOCUMENT
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="teste.pdf"
+Content-Type: application/pdf
+
+< ./test-files/teste.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 5.2 Buscar arquivo inexistente (deve retornar 404)
+GET {{baseUrl}}/files/arquivo-inexistente-id
+Authorization: Bearer {{accessToken}}
+
+### 5.3 Deletar arquivo inexistente (deve retornar 404)
+DELETE {{baseUrl}}/files/arquivo-inexistente-id
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 6. TESTES DE INTEGRAÇÃO
+### =============================================================================
+
+### 6.1 Verificar se arquivo existe no MinIO
+# Acessar diretamente a URL do arquivo
+GET {{uploadDocument.response.body.url}}
+
+### =============================================================================
+### 7. DOCUMENTAÇÃO DOS ENDPOINTS
+### =============================================================================
+
+### Endpoints disponíveis:
+# POST /files/upload?type=TIPO&description=DESCRIÇÃO  - Upload de arquivo
+# GET /files?page=1&limit=10                          - Listar arquivos
+# GET /files/{id}                                     - Buscar por ID
+# DELETE /files/{id}                                  - Deletar arquivo
+
+### Tipos de arquivo suportados:
+# PROFILE_IMAGE - Imagens de perfil
+# DOCUMENT - Documentos
+# REPORT - Relatórios
+# VIDEO - Vídeos
+# AUDIO - Áudios
+# OTHER - Outros tipos
+
+### Exemplo de uso:
+# 1. Fazer login para obter token
+# 2. Fazer upload: POST /files/upload?type=DOCUMENT&description=Meu documento
+# 3. Listar arquivos: GET /files?page=1&limit=10
+# 4. Buscar arquivo: GET /files/{id}
+# 5. Deletar arquivo: DELETE /files/{id}

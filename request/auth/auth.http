@@ -1,0 +1,331 @@
+### =============================================================================
+### ARQUIVO HTTP - MÓDULO DE AUTENTICAÇÃO
+### Sistema: DEPARTAMENTO ESTADUAL DE RODOVIAS Engine
+### Versão: 1.0
+### =============================================================================
+
+# Configuração de variáveis
+@baseUrl = http://localhost:30100
+@contentType = application/json
+
+# Variáveis de autenticação (serão preenchidas após login)
+@accessToken = {{ systemAdminLogin.response.body.access_token }}
+@refreshToken = {{ systemAdminLogin.response.body.refresh_token }}
+
+@resetToken = 
+
+### =============================================================================
+### 1. AUTENTICAÇÃO BÁSICA
+### =============================================================================
+
+### 1.1 Login - Autenticação com email/login
+
+
+### Login SYSTEM_ADMIN
+# @name systemAdminLogin
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "System Admin Claiver",
+  "password": "SystemAdmin@Senha"
+}
+
+### 1.2 Login - Autenticação com login do usuário
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "admin",
+  "password": "Admin123!"
+}
+
+### 1.3 Login - Teste com credenciais inválidas
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "usuario_inexistente",
+  "password": "senha_errada"
+}
+
+### =============================================================================
+### 2. GERENCIAMENTO DE TOKENS
+### =============================================================================
+
+### 2.1 Refresh Token - Renovar access token
+POST {{baseUrl}}/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  # "refreshToken": "{{refreshToken}}"
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjbWN5MmEwZHEwMDAxbHRqbmVoaWYyODY5IiwiaWF0IjoxNzUyNjI4MTA1LCJleHAiOjE3NTI2MzE3MDV9.aTAsMm6-f8zp7-0t0em20LzJWsGdJwfQ1m5vdgOiPN4"
+}
+
+### 2.2 Logout - Invalidar token específico
+POST {{baseUrl}}/auth/logout
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 2.3 Logout All - Invalidar todos os tokens do usuário
+POST {{baseUrl}}/auth/logout-all
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### =============================================================================
+### 3. RECUPERAÇÃO DE SENHA
+### =============================================================================
+
+### 3.1 Forgot Password - Solicitar reset de senha
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@departamento-estadual-rodovias.com"
+}
+
+### 3.2 Validate Reset Token - Validar token de reset
+POST {{baseUrl}}/auth/validate-reset-token
+Content-Type: {{contentType}}
+
+{
+  "token": "{{resetToken}}"
+}
+
+### 3.3 Reset Password - Resetar senha
+POST {{baseUrl}}/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "token": "{{resetToken}}",
+  "newPassword": "NovaSenha123!",
+  "confirmPassword": "NovaSenha123!"
+}
+
+### =============================================================================
+### 4. MÉTRICAS E MONITORAMENTO
+### =============================================================================
+
+### 4.1 Métricas de Autenticação - Geral
+GET {{baseUrl}}/auth/metrics
+Authorization: Bearer {{accessToken}}
+
+### 4.2 Métricas de Autenticação - Com período específico
+GET {{baseUrl}}/auth/metrics?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{accessToken}}
+
+### 4.3 Métricas de Segurança - Geral
+GET {{baseUrl}}/auth/security-metrics
+Authorization: Bearer {{accessToken}}
+
+### 4.4 Métricas de Segurança - Com período específico
+GET {{baseUrl}}/auth/security-metrics?startDate=2024-01-01&endDate=2024-12-31
+Authorization: Bearer {{accessToken}}
+
+### 4.5 Métricas em Tempo Real
+GET {{baseUrl}}/auth/real-time-metrics
+Authorization: Bearer {{accessToken}}
+
+### 4.6 Alertas de Segurança
+GET {{baseUrl}}/auth/security-alerts
+Authorization: Bearer {{accessToken}}
+
+### 4.7 Top Usuários Ativos - Padrão (10 usuários)
+GET {{baseUrl}}/auth/top-active-users
+Authorization: Bearer {{accessToken}}
+
+### 4.8 Top Usuários Ativos - Limite customizado
+GET {{baseUrl}}/auth/top-active-users?limit=5
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 5. EXPORTAÇÃO DE DADOS
+### =============================================================================
+
+### 5.1 Exportar Métricas - Formato JSON
+GET {{baseUrl}}/auth/export-metrics?startDate=2024-01-01&endDate=2024-12-31&format=json
+Authorization: Bearer {{accessToken}}
+
+### 5.2 Exportar Métricas - Formato CSV
+GET {{baseUrl}}/auth/export-metrics?startDate=2024-01-01&endDate=2024-12-31&format=csv
+Authorization: Bearer {{accessToken}}
+
+### =============================================================================
+### 6. CENÁRIOS DE TESTE
+### =============================================================================
+
+### 6.1 Fluxo Completo - Login → Refresh → Logout
+# Passo 1: Login
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "guard@departamento-estadual-rodovias.com",
+  "password": "Guard123!"
+}
+
+###
+# Passo 2: Refresh (usar token do passo anterior)
+POST {{baseUrl}}/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "seu_refresh_token_aqui"
+}
+
+###
+# Passo 3: Logout
+POST {{baseUrl}}/auth/logout
+Content-Type: {{contentType}}
+Authorization: Bearer seu_access_token_aqui
+
+{
+  "refreshToken": "seu_refresh_token_aqui"
+}
+
+### 6.2 Fluxo de Recuperação de Senha
+# Passo 1: Solicitar reset
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: {{contentType}}
+
+{
+  "email": "teste@departamento-estadual-rodovias.com"
+}
+
+###
+# Passo 2: Validar token (pegar do email)
+POST {{baseUrl}}/auth/validate-reset-token
+Content-Type: {{contentType}}
+
+{
+  "token": "token_do_email_aqui"
+}
+
+###
+# Passo 3: Resetar senha
+POST {{baseUrl}}/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "token": "token_do_email_aqui",
+  "newPassword": "NovaSenha123!",
+  "confirmPassword": "NovaSenha123!"
+}
+
+### =============================================================================
+### 7. TESTES DE SEGURANÇA
+### =============================================================================
+
+### 7.1 Teste de Rate Limiting - Múltiplas tentativas
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "teste@departamento-estadual-rodovias.com",
+  "password": "senha_errada"
+}
+
+### 7.2 Teste com Token Expirado
+GET {{baseUrl}}/auth/metrics
+Authorization: Bearer token_expirado_aqui
+
+### 7.3 Teste sem Authorization Header
+GET {{baseUrl}}/auth/metrics
+
+### 7.4 Teste com Token Inválido
+GET {{baseUrl}}/auth/metrics
+Authorization: Bearer token_invalido_123
+
+### =============================================================================
+### 8. DADOS DE TESTE
+### =============================================================================
+
+# Usuários de teste para diferentes roles:
+# 
+# SYSTEM_ADMIN:
+# - Email: admin@departamento-estadual-rodovias.com
+# - Login: admin
+# - Password: Admin123!
+#
+# GUARD:
+# - Email: guard@departamento-estadual-rodovias.com
+# - Login: guard
+# - Password: Guard123!
+#
+# SUPERVISOR:
+# - Email: supervisor@departamento-estadual-rodovias.com
+# - Login: supervisor
+# - Password: Supervisor123!
+#
+# HR:
+# - Email: hr@departamento-estadual-rodovias.com
+# - Login: hr
+# - Password: Hr123!
+
+### =============================================================================
+### 9. VALIDAÇÕES E ERROS
+### =============================================================================
+
+### 9.1 Validação - Login sem dados
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+}
+
+### 9.2 Validação - Senha muito fraca
+POST {{baseUrl}}/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "token": "token_valido",
+  "newPassword": "123",
+  "confirmPassword": "123"
+}
+
+### 9.3 Validação - Senhas não coincidem
+POST {{baseUrl}}/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "token": "token_valido",
+  "newPassword": "NovaSenha123!",
+  "confirmPassword": "SenhasDiferentes123!"
+}
+
+### 9.4 Validação - Email inválido
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: {{contentType}}
+
+{
+  "email": "email_invalido"
+}
+
+### =============================================================================
+### 10. NOTAS DE USO
+### =============================================================================
+
+# Como usar este arquivo:
+# 1. Substitua {{baseUrl}} pela URL do seu servidor
+# 2. Execute o login para obter accessToken e refreshToken
+# 3. Copie os tokens para as variáveis no início do arquivo
+# 4. Use os tokens nos requests subsequentes
+# 
+# Ferramentas compatíveis:
+# - VS Code (REST Client extension)
+# - JetBrains IDEs (HTTP Client)
+# - Postman (importe como coleção)
+# - Thunder Client (VS Code)
+# - curl (conversão automática)
+
+### =============================================================================
+### FIM DO ARQUIVO
+### ============================================================================= 

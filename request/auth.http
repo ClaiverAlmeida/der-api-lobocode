@@ -1,0 +1,202 @@
+### =============================================================================
+### ARQUIVO HTTP - TESTE DE AUTENTICAÇÃO COM RESPONSES PADRONIZADOS
+### Sistema: DEPARTAMENTO ESTADUAL DE RODOVIAS Engine
+### =============================================================================
+
+# Configuração de variáveis
+@baseUrl = http://localhost:30100
+@contentType = application/json
+
+# Variáveis de teste (preencher após os testes)
+@accessToken = 
+@refreshToken = 
+
+### =============================================================================
+### 1. TESTE DE RESPONSES PADRONIZADOS - LOGIN
+### =============================================================================
+
+### 1.1 Login com sucesso (Response 200)
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "admin@departamento-estadual-rodovias.com",
+  "password": "Admin123!"
+}
+
+### 1.2 Login com credenciais inválidas (Response 401)
+# Deve retornar: {"error": "INVALID_CREDENTIALS", "message": "Credenciais inválidas"}
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "usuario_inexistente",
+  "password": "senha_errada"
+}
+
+### 1.3 Login com dados inválidos (Response 400)
+# Deve retornar: {"error": "BAD_REQUEST", "message": "Dados inválidos"}
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "",
+  "password": "123"
+}
+
+### =============================================================================
+### 2. TESTE DE RESPONSES PADRONIZADOS - TOKEN
+### =============================================================================
+
+### 2.1 Acesso sem token (Response 401)
+# Deve retornar: {"error": "TOKEN_REQUIRED", "message": "Token obrigatório"}
+GET {{baseUrl}}/auth/metrics
+
+### 2.2 Acesso com token inválido (Response 401)
+# Deve retornar: {"error": "TOKEN_INVALID", "message": "Token inválido"}
+GET {{baseUrl}}/auth/metrics
+Authorization: Bearer token_invalido_123
+
+### 2.3 Acesso com token expirado (Response 401)
+# Deve retornar: {"error": "TOKEN_EXPIRED", "message": "Token expirado"}
+GET {{baseUrl}}/auth/metrics
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+### =============================================================================
+### 3. TESTE DE RESPONSES PADRONIZADOS - RECURSOS
+### =============================================================================
+
+### 3.1 Recurso não encontrado (Response 404)
+# Deve retornar: {"error": "NOT_FOUND", "message": "Não encontrado"}
+GET {{baseUrl}}/auth/endpoint-inexistente
+
+### 3.2 Método não permitido (Response 405)
+# Deve retornar erro padronizado
+PATCH {{baseUrl}}/auth/login
+
+### =============================================================================
+### 4. TESTE DE RESPONSES PADRONIZADOS - VALIDAÇÃO
+### =============================================================================
+
+### 4.1 Validação de email inválido (Response 400)
+# Deve retornar detalhes de validação
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: {{contentType}}
+
+{
+  "email": "email_sem_formato"
+}
+
+### 4.2 Validação de senha fraca (Response 400)
+# Deve retornar detalhes de validação
+POST {{baseUrl}}/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "token": "token_valido",
+  "newPassword": "123",
+  "confirmPassword": "123"
+}
+
+### =============================================================================
+### 5. TESTE DE RESPONSES PADRONIZADOS - RATE LIMITING
+### =============================================================================
+
+### 5.1 Teste de rate limiting (Response 429)
+# Execute múltiplas vezes para atingir o limite
+# Deve retornar: {"error": "RATE_LIMIT_EXCEEDED", "message": "Limite excedido"}
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "teste@departamento-estadual-rodovias.com",
+  "password": "senha_errada"
+}
+
+### =============================================================================
+### 6. COMPARAÇÃO: ANTES vs DEPOIS
+### =============================================================================
+
+### ANTES (Problemático):
+# {
+#   "statusCode": 401,
+#   "timestamp": "2025-01-12T03:52:22.144Z",
+#   "path": "/users",
+#   "method": "GET",
+#   "message": "Token inválido",
+#   "error": "Unauthorized",
+#   "details": {
+#     "stack": [
+#       "UnauthorizedException: Token inválido",
+#       "    at AuthGuard.validateAndDecodeToken (/home/claiver/projetos/departamento-estadual-rodovias-engine/src/shared/auth/guards/auth.guard.ts:64:15)",
+#       "    at AuthGuard.canActivate (/home/claiver/projetos/departamento-estadual-rodovias-engine/src/shared/auth/guards/auth.guard.ts:28:28)"
+#     ]
+#   }
+# }
+
+### DEPOIS (Minimalista):
+# {
+#   "error": "TOKEN_INVALID",
+#   "message": "Token inválido"
+# }
+
+### =============================================================================
+### 7. ENDPOINTS FUNCIONAIS (APÓS CORREÇÃO)
+### =============================================================================
+
+### 7.1 Login funcional
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "login": "admin@departamento-estadual-rodovias.com",
+  "password": "Admin123!"
+}
+
+### 7.2 Refresh token funcional
+POST {{baseUrl}}/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 7.3 Métricas funcionais
+GET {{baseUrl}}/auth/metrics
+Authorization: Bearer {{accessToken}}
+
+### 7.4 Logout funcional
+POST {{baseUrl}}/auth/logout
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### =============================================================================
+### 8. NOTAS IMPORTANTES
+### =============================================================================
+
+# ✅ MELHORIAS IMPLEMENTADAS:
+# - Stack traces não são mais expostos
+# - Mensagens são amigáveis ao usuário
+# - Códigos de erro específicos para o frontend
+# - Resposta padronizada com campo "success"
+# - Detalhes técnicos apenas em desenvolvimento
+
+# 🔧 COMO TESTAR:
+# 1. Execute os endpoints de erro para ver as novas respostas
+# 2. Compare com o formato anterior (comentado)
+# 3. Verifique se não há stack traces expostos
+# 4. Confirme que as mensagens são amigáveis
+
+# 💡 PARA O FRONTEND:
+# - Use o campo "errorCode" para lógica condicional
+# - Use o campo "message" para exibir ao usuário
+# - Use o campo "success" para verificar se houve erro
+# - O campo "details" aparece apenas em desenvolvimento
+
+### =============================================================================
+### FIM DO ARQUIVO
+### ============================================================================= 

@@ -1,0 +1,14 @@
+{
+  "files.exclude": {},
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true
+  },
+  "files.associations": {
+    ".env": "dotenv"
+  },
+  "security.workspace.trust.enabled": true,
+  "security.workspace.trust.untrustedFiles": "open"
+}
