@@ -8,7 +8,7 @@ services:
     env_file:
       - .env
     ports:
-      - '30100:3000' # departamento-estadual-rodovias: bloco 30xxx
+      - '3011:3000'
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
@@ -40,7 +40,7 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
     ports:
-      - '15432:5432' # departamento-estadual-rodovias: bloco 15xxx
+      - '3211:5432'
     volumes:
       - departamento-estadual-rodovias-api-lobocode_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -66,7 +66,7 @@ services:
     image: redis:7-alpine
     container_name: departamento-estadual-rodovias-redis
     ports:
-      - '16379:6379' # departamento-estadual-rodovias: bloco 16xxx
+      - '3911:6379'
     volumes:
       - redis_data:/data
     deploy:
@@ -88,8 +88,8 @@ services:
     env_file:
       - .env
     ports:
-      - '19000:9000' # departamento-estadual-rodovias: bloco 19xxx
-      - '19001:9001' # departamento-estadual-rodovias: bloco 19xxx
+      - '3311:9000'
+      - '3312:9001'
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-password123}

@@ -34,9 +34,9 @@ export class FilesService {
     const minioHost = this.configService.get<string>('MINIO_HOST', 'minio');
     // Converter porta para número (pode vir como string do env)
     const minioPort = parseInt(
-      this.configService.get<string>('MINIO_PORT', '19000'),
+      this.configService.get<string>('MINIO_PORT', '3311'),
       10,
-    ); // departamento-estadual-rodovias: bloco 19xxx
+    );
     // Converter useSSL para boolean (pode vir como string do env)
     const useSSLStr = this.configService.get<string>('MINIO_USE_SSL', 'false');
     const useSSL = useSSLStr === 'true';
@@ -113,8 +113,8 @@ export class FilesService {
       // URL pública
       const minioEndpoint = this.configService.get<string>(
         'MINIO_ENDPOINT',
-        'http://localhost:19000',
-      ); // departamento-estadual-rodovias: bloco 19xxx
+        'http://localhost:3311',
+      );
       const url = `${minioEndpoint}/${this.bucketName}/${fullPath}`;
 
       // Salvar no banco

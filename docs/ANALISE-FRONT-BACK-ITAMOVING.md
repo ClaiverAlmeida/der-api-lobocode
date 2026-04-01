@@ -102,7 +102,7 @@ O schema já está alinhado ao domínio do front na maior parte. Resumo:
 | Entidade backend (schema.departamento-estadual-rodovias)   | Front (tipos / uso)                          | Observações                                                                                                      |
 | ---------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **Company**                                                | Implícito (multi-tenant)                     | companyId em todas as entidades; front pode enviar header ou usar usuário logado                                 |
-| **User** + **Roles** (ADMIN, COMERCIAL, LOGISTICS, DRIVER) | Auth: admin, comercial, logistico, motorista | Mapeamento direto; backend deve usar enum do schema Departamento Estadual Rodovias                               |
+| **User** + **Roles** (ADMIN, FISCAL_CAMPO, OPERADOR, INSPETOR_VIA) | Auth: admin, comercial, logistico, motorista | Mapeamento direto; backend deve usar enum do schema Departamento Estadual Rodovias                               |
 | **Cliente**                                                | Cliente                                      | Schema usa `enderecoUSA`/`destinoBrasil` como Json; front usa objetos tipados – garantir contrato (campos) igual |
 | **Estoque**                                                | Estoque                                      | 1 por Company; caixasPequenas/Medias/Grandes, fitasAdesivas                                                      |
 | **Agendamento**                                            | Agendamento                                  | Incluir rotaId opcional; status e campos batem                                                                   |
@@ -140,7 +140,7 @@ Módulos e entidades atuais (Departamento Estadual Rodovias):
 - **documents** – documentos; pode ser reutilizado
 - **notifications** – notificações; pode ser reutilizado
 - **service-bus** – filas; interno
-- **shared/auth** – auth JWT; **manter**, mas ajustar roles para ADMIN/COMERCIAL/LOGISTICS/DRIVER quando usar schema Departamento Estadual Rodovias
+- **shared/auth** – auth JWT; **manter**, mas ajustar roles para ADMIN/FISCAL_CAMPO/OPERADOR/INSPETOR_VIA quando usar schema Departamento Estadual Rodovias
 - **shared/files** – upload; **manter**
 - **shared/universal** – CRUD genérico; pode ser útil para entidades simples
 
@@ -156,7 +156,7 @@ Conclusão: a maior parte dos **módulos de negócio** atuais não corresponde a
    - Trocar (ou unificar) o uso de `schema.prisma` para `schema.departamento-estadual-rodovias.prisma` (renomear/copiar para `schema.prisma` ou usar multi-schema se a stack permitir).
    - Rodar migrações em um banco dedicado ao Departamento Estadual Rodovias.
 2. **Ajustar Auth/Users**
-   - Roles: usar enum do schema Departamento Estadual Rodovias (ADMIN, COMERCIAL, LOGISTICS, DRIVER).
+   - Roles: usar enum do schema Departamento Estadual Rodovias (ADMIN, FISCAL_CAMPO, OPERADOR, INSPETOR_VIA).
    - Manter login/refresh/logout; JWT com `role` e `companyId` para multi-tenant.
    - Se ainda existir tabela User do Departamento Estadual Rodovias, criar migração ou nova tabela User compatível com o schema Departamento Estadual Rodovias (name, email, login, password, role, companyId, status, etc.).
 

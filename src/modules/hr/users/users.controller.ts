@@ -26,12 +26,12 @@ import { UsersService } from './users.service';
   GET: [
     Roles.SYSTEM_ADMIN,
     Roles.ADMIN,
-    Roles.COMERCIAL,
-    Roles.LOGISTICS,
-    Roles.DRIVER,
+    Roles.FISCAL_CAMPO,
+    Roles.OPERADOR,
+    Roles.INSPETOR_VIA,
   ],
-  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.COMERCIAL],
-  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.COMERCIAL],
+  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FISCAL_CAMPO],
+  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FISCAL_CAMPO],
   DELETE: [Roles.SYSTEM_ADMIN, Roles.ADMIN],
 })
 @Controller('hr/users')
@@ -50,8 +50,8 @@ export class UsersController extends UniversalController<
   // }
 
   @Get('drivers')
-  @RequiredRoles(Roles.ADMIN, Roles.COMERCIAL, Roles.LOGISTICS, Roles.DRIVER)
+  @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR, Roles.INSPETOR_VIA)
   buscarMuitosPorCampos() {
-    return this.service.buscarMuitosPorCampos({ role: Roles.DRIVER, status: UserStatus.ACTIVE });
+    return this.service.buscarMuitosPorCampos({ role: Roles.INSPETOR_VIA, status: UserStatus.ACTIVE });
   }
 }

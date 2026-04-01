@@ -16,10 +16,10 @@ import { AssetsService } from './assets.service';
 
 @UseGuards(AuthGuard, RoleByMethodGuard)
 @RoleByMethod({
-  GET: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.COMERCIAL, Roles.LOGISTICS, Roles.DRIVER],
-  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.LOGISTICS],
-  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.LOGISTICS],
-  DELETE: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.LOGISTICS],
+  GET: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR, Roles.INSPETOR_VIA],
+  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.OPERADOR],
+  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.OPERADOR],
+  DELETE: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.OPERADOR],
 })
 @Controller('assets')
 export class AssetsController extends UniversalController<
@@ -36,7 +36,7 @@ export class AssetsController extends UniversalController<
    */
   @Get('highway/:highway')
   async buscarPorRodovia(@Param('highway') highway: string) {
-    return this.service.buscarMuitosPorCampo('highway', highway);
+    return this.service.buscarMuitosPorRodoviaAtiva(highway);
   }
 
   /**

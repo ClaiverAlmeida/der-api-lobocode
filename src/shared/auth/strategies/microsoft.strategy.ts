@@ -27,7 +27,7 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
       clientSecret: configService.get<string>('MICROSOFT_CLIENT_SECRET', ''),
       callbackURL: configService.get<string>(
         'MICROSOFT_CALLBACK_URL',
-        'http://localhost:30100/auth/microsoft/callback',
+        'http://localhost:3011/auth/microsoft/callback',
       ),
       scope: ['user.read'],
       tenant: configService.get<string>('MICROSOFT_TENANT', 'common'),

@@ -65,7 +65,7 @@ async function bootstrap() {
 
     app.useGlobalInterceptors(new MetricsInterceptor());
 
-    const port = process.env.PORT ?? 30100; // departamento-estadual-rodovias: bloco 30xxx
+    const port = process.env.PORT ?? 3011;
     await app.listen(port);
 
     logger.log(`🚀 Aplicação iniciada na porta ${port}`, 'Bootstrap');

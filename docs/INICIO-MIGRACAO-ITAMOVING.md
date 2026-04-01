@@ -38,9 +38,9 @@ Seguindo **Opção A**: crie um banco PostgreSQL (ex.: `departamento_estadual_ro
 ## Passo 2 – Ajustar Auth e seed para o novo modelo
 
 - O **Auth** atual (login/refresh/logout) pode ser mantido; o que muda é o **modelo User** e o **enum Roles**.
-- No schema Departamento Estadual Rodovias, `User` tem `role: Roles` com `ADMIN | COMERCIAL | LOGISTICS | DRIVER`.
+- No schema Departamento Estadual Rodovias, `User` tem `role: Roles` com `ADMIN | FISCAL_CAMPO | OPERADOR | INSPETOR_VIA`.
 - Ajustes necessários:
-  1. **Auth (JWT payload):** Garantir que o payload use os novos roles (ex.: `ADMIN`, `COMERCIAL`, `LOGISTICS`, `DRIVER`) em vez dos antigos (SYSTEM_ADMIN, GUARD, etc.). Isso pode exigir alterar o serviço de login e o que lê do Prisma (buscar usuário pelo novo `User`).
+  1. **Auth (JWT payload):** Garantir que o payload use os novos roles (ex.: `ADMIN`, `FISCAL_CAMPO`, `OPERADOR`, `INSPETOR_VIA`) em vez dos antigos (SYSTEM_ADMIN, GUARD, etc.). Isso pode exigir alterar o serviço de login e o que lê do Prisma (buscar usuário pelo novo `User`).
   2. **Seed:** Criar ao menos uma **Company** e um **User** (ex.: admin) com role `ADMIN` e senha conhecida, para testar login no front.
 - **Ordem sugerida:** Fazer o Passo 1, depois adaptar o auth (e o que depender de `User`/`Company` do Prisma) para o novo schema e, por fim, rodar o seed.
 
@@ -54,7 +54,7 @@ Seguindo **Opção A**: crie um banco PostgreSQL (ex.: `departamento_estadual_ro
   2. **Controller:** `GET /clientes`, `POST /clientes`, `GET /clientes/:id`, `PATCH /clientes/:id`, `DELETE /clientes/:id` (e opcionalmente listar com filtros por status, atendente, etc.).
   3. **Service + repositório (ou só service):** Criar/atualizar/buscar `Cliente` no Prisma, sempre filtrando por `companyId` (multi-tenant).
   4. **DTOs:** Alinhados ao tipo `Cliente` do front (`enderecoUSA` e `destinoBrasil` como objetos; no Prisma estão como `Json`).
-  5. **Guards:** Proteger rotas com auth e, se fizer sentido, restringir por role (ex.: COMERCIAL e ADMIN podem alterar clientes).
+  5. **Guards:** Proteger rotas com auth e, se fizer sentido, restringir por role (ex.: FISCAL_CAMPO e ADMIN podem alterar clientes).
 
 Depois que Clientes estiver estável, o front pode trocar o DataContext de clientes para usar `GET/POST/PATCH/DELETE /clientes`.
 

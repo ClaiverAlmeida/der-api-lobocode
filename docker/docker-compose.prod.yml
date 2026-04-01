@@ -8,7 +8,7 @@ services:
     env_file:
       - .env
     ports:
-      - '30100:3000' # departamento-estadual-rodovias: bloco 30xxx
+      - '3011:3000'
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
@@ -48,7 +48,7 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
     ports:
-      - '15432:5432' # departamento-estadual-rodovias: bloco 15xxx  # departamento-estadual-rodovias: evita conflito com departamento-estadual-rodovias (5432)
+      - '3211:5432'
     volumes:
       - departamento-estadual-rodovias-api-lobocode_postgres_data:/var/lib/postgresql/data
       - ./backups:/backups

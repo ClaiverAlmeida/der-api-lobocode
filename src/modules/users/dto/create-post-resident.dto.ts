@@ -13,8 +13,8 @@ export class CreatePostResidentDto extends BaseUserDto {
   @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
   postId?: string;
 
-  @IsExpectedRole(Roles.LOGISTICS, {
+  @IsExpectedRole(Roles.OPERADOR, {
     message: VALIDATION_MESSAGES.REQUIRED.ROLE,
   })
-  role: Roles; // Schema DEPARTAMENTO ESTADUAL DE RODOVIAS: mapeado para LOGISTICS
+  role: Roles; // Schema DEPARTAMENTO ESTADUAL DE RODOVIAS: mapeado para OPERADOR
 }

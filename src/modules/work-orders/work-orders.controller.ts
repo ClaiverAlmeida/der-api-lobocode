@@ -33,12 +33,12 @@ import { WorkOrdersService } from './work-orders.service';
   GET: [
     Roles.SYSTEM_ADMIN,
     Roles.ADMIN,
-    Roles.COMERCIAL,
-    Roles.LOGISTICS,
-    Roles.DRIVER,
+    Roles.FISCAL_CAMPO,
+    Roles.OPERADOR,
+    Roles.INSPETOR_VIA,
   ],
-  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.LOGISTICS],
-  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.LOGISTICS],
+  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.OPERADOR],
+  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.OPERADOR],
   DELETE: [Roles.SYSTEM_ADMIN, Roles.ADMIN],
 })
 @Controller('work-orders')

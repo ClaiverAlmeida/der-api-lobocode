@@ -135,7 +135,7 @@ const specificPermissions = {
 };
 
 // ========================================
-// MAPEAMENTO DE ROLES (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: SYSTEM_ADMIN, ADMIN, COMERCIAL, LOGISTICS, DRIVER)
+// MAPEAMENTO DE ROLES (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: SYSTEM_ADMIN, ADMIN, FISCAL_CAMPO, OPERADOR, INSPETOR_VIA)
 // ========================================
 
 const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
@@ -148,9 +148,9 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     administrativePermissions.companyManage(user, { can });
     administrativePermissions.userManagement(user, { can }, [
       Roles.ADMIN,
-      Roles.COMERCIAL,
-      Roles.LOGISTICS,
-      Roles.DRIVER,
+      Roles.FISCAL_CAMPO,
+      Roles.OPERADOR,
+      Roles.INSPETOR_VIA,
     ]);
     administrativePermissions.resourceManagement(user, { can });
     administrativePermissions.reporting(user, { can });
@@ -158,7 +158,7 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     specificPermissions.workOrdersManage(user, { can });
   },
 
-  COMERCIAL: (user: User, { can }: any) => {
+  FISCAL_CAMPO: (user: User, { can }: any) => {
     administrativePermissions.companyRead(user, { can });
     profilePermissions.ownProfileExtended(user, { can });
     basicResourcePermissions.readDocuments(user, { can });
@@ -168,7 +168,7 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     specificPermissions.workOrdersRead(user, { can });
   },
 
-  LOGISTICS: (user: User, { can }: any) => {
+  OPERADOR: (user: User, { can }: any) => {
     administrativePermissions.companyRead(user, { can });
     profilePermissions.ownProfileExtended(user, { can });
     basicResourcePermissions.readDocuments(user, { can });
@@ -178,7 +178,7 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     specificPermissions.workOrdersManage(user, { can });
   },
 
-  DRIVER: (user: User, { can }: any) => {
+  INSPETOR_VIA: (user: User, { can }: any) => {
     profilePermissions.ownProfile(user, { can });
     basicResourcePermissions.readDocuments(user, { can });
     operationalPermissions.appointmentManagement(user, { can });

@@ -114,7 +114,7 @@ export class NotificationRecipientsService {
     const users = await this.prisma.user.findMany({
       where: {
         companyId,
-        role: 'LOGISTICS',
+        role: 'OPERADOR',
         status: 'ACTIVE',
         deletedAt: null,
       },
@@ -130,7 +130,7 @@ export class NotificationRecipientsService {
     const users = await this.prisma.user.findMany({
       where: {
         companyId,
-        role: { in: ['ADMIN', 'LOGISTICS'] },
+        role: { in: ['ADMIN', 'OPERADOR'] },
         status: 'ACTIVE',
         deletedAt: null,
       },
@@ -149,7 +149,7 @@ export class NotificationRecipientsService {
       where: {
         user: {
           companyId,
-          role: 'LOGISTICS',
+          role: 'OPERADOR',
           status: 'ACTIVE',
           deletedAt: null,
         },

@@ -6,8 +6,8 @@ services:
     env_file:
       - .env
     ports:
-      - '19000:9000' # departamento-estadual-rodovias: bloco 19xxx
-      - '19001:9001' # departamento-estadual-rodovias: bloco 19xxx
+      - '3311:9000'
+      - '3312:9001'
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-password123}

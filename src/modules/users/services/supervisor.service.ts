@@ -24,13 +24,13 @@ export class SupervisorService extends BaseUserService {
       userValidator,
       userQueryService,
       userPermissionService,
-      Roles.LOGISTICS,
+      Roles.OPERADOR,
     );
   }
 
-  //  Funcionalidades específicas (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: mapeado para LOGISTICS)
+  //  Funcionalidades específicas (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: mapeado para OPERADOR)
   async criarNovoSupervisor(dto: CreateSupervisorDto) {
-    this.userPermissionService.validarCriacaoDeUserComRole(Roles.LOGISTICS);
+    this.userPermissionService.validarCriacaoDeUserComRole(Roles.OPERADOR);
 
     // Valida se email é único
     await this.validarSeEmailEhUnico(dto.email);

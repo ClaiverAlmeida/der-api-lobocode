@@ -26,12 +26,12 @@ import { UpdateAppointmentsDto } from './dto/update-appointments.dto';
   GET: [
     Roles.SYSTEM_ADMIN,
     Roles.ADMIN,
-    Roles.COMERCIAL,
-    Roles.LOGISTICS,
-    Roles.DRIVER,
+    Roles.FISCAL_CAMPO,
+    Roles.OPERADOR,
+    Roles.INSPETOR_VIA,
   ],
-  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.COMERCIAL],
-  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.COMERCIAL],
+  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FISCAL_CAMPO],
+  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FISCAL_CAMPO],
   DELETE: [Roles.SYSTEM_ADMIN, Roles.ADMIN],
 })
 @Controller('appointments')

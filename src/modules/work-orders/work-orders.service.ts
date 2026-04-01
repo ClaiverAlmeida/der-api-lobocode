@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   Optional,
   Scope,
@@ -363,13 +364,31 @@ export class WorkOrdersService extends UniversalService<
     type: WorkOrderType;
     assignedToUser?: { name: string | null } | null;
   }): Promise<void> {
-    await this.criarChecklistPadrao(data.id, data.type);
-    await this.registrarComentarioAutomatico(data.id, 'OS criada.');
+    try {
+      await this.criarChecklistPadrao(data.id, data.type);
+      await this.registrarComentarioAutomatico(data.id, 'OS criada.');
 
-    if (data.assignedToUser?.name) {
-      await this.registrarComentarioAutomatico(
-        data.id,
-        `OS atribuída para ${data.assignedToUser.name}.`,
+      if (data.assignedToUser?.name) {
+        await this.registrarComentarioAutomatico(
+          data.id,
+          `OS atribuída para ${data.assignedToUser.name}.`,
+        );
+      }
+    } catch (error) {
+      console.error(
+        '[WorkOrdersService] depoisDeCriar falhou',
+        JSON.stringify({
+          workOrderId: data.id,
+          workOrderType: data.type,
+          assignedToUserName: data.assignedToUser?.name ?? null,
+        }),
+        error,
+      );
+
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      throw new InternalServerErrorException(
+        `Falha ao inicializar checklist/comentários da ordem de serviço: ${errorMessage}`,
       );
     }
   }
@@ -408,7 +427,7 @@ export class WorkOrdersService extends UniversalService<
       where: {
         id: userId,
         status: UserStatus.ACTIVE,
-        role: { in: [Roles.DRIVER, Roles.LOGISTICS] },
+        role: { in: [Roles.INSPETOR_VIA, Roles.OPERADOR] },
         ...(companyId && { companyId }),
       },
       select: {
@@ -431,13 +450,18 @@ export class WorkOrdersService extends UniversalService<
       return;
     }
 
-    await this.prisma.workOrderChecklistItem.createMany({
-      data: labels.map((label, index) => ({
-        workOrderId: id,
-        label,
-        sortOrder: index + 1,
-      })),
-    });
+    await this.repository.atualizar(
+      'workOrder',
+      { id },
+      {
+        checklistItems: {
+          create: labels.map((label, index) => ({
+            label,
+            sortOrder: index + 1,
+          })),
+        },
+      } as any,
+    );
   }
 
   private obterChecklistPadraoPorTipo(type: WorkOrderType): string[] {
@@ -477,13 +501,18 @@ export class WorkOrdersService extends UniversalService<
       return;
     }
 
-    await this.prisma.workOrderComment.create({
-      data: {
-        workOrderId,
-        authorId: autorId,
-        text,
-      },
-    });
+    await this.repository.atualizar(
+      'workOrder',
+      { id: workOrderId },
+      {
+        comments: {
+          create: {
+            author: { connect: { id: autorId } },
+            text,
+          },
+        },
+      } as any,
+    );
   }
 
   private normalizarDetalhesDaOrdem<T>(ordem: T): T {

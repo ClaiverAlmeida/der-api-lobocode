@@ -86,7 +86,7 @@ export class OAuthService {
         name,
         email,
         login: novoLogin,
-        role: Roles.DRIVER,
+        role: Roles.INSPETOR_VIA,
         status: UserStatus.PENDING,
         profilePicture: picture,
         oauthAccounts: {

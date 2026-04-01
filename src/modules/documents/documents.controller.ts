@@ -25,10 +25,10 @@ import { DocumentStatus } from '@prisma/client';
 @UseGuards(AuthGuard, RoleByMethodGuard)
 @UseInterceptors(TenantInterceptor)
 @RoleByMethod({
-  GET: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.COMERCIAL, Roles.LOGISTICS, Roles.DRIVER],
-  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.COMERCIAL, Roles.LOGISTICS, Roles.DRIVER],
-  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.COMERCIAL, Roles.LOGISTICS],
-  DELETE: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.COMERCIAL, Roles.LOGISTICS],
+  GET: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR, Roles.INSPETOR_VIA],
+  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR, Roles.INSPETOR_VIA],
+  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR],
+  DELETE: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR],
 })
 export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}

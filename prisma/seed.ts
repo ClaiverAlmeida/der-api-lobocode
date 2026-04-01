@@ -95,7 +95,7 @@ async function seedUsers(companyId: string) {
     login: 'comercial@departamento-estadual-rodovias.com',
     password: 'Comercial123@Senha',
     email: 'comercial@departamento-estadual-rodovias.com',
-    role: Roles.COMERCIAL,
+    role: Roles.FISCAL_CAMPO,
     status: UserStatus.ACTIVE,
     cpf: '111.111.111-11',
     phone: '(11) 98888-8888',
@@ -150,7 +150,7 @@ async function seedUsers(companyId: string) {
     login: 'raquel@departamento-estadual-rodovias.com',
     password: 'raquel123',
     email: 'raquel@departamento-estadual-rodovias.com',
-    role: Roles.LOGISTICS,
+    role: Roles.OPERADOR,
     status: UserStatus.ACTIVE,
     cpf: '333.333.333-33',
     phone: '(11) 97777-7777',
@@ -205,7 +205,7 @@ async function seedUsers(companyId: string) {
     login: 'motorista@departamento-estadual-rodovias.com',
     password: 'Motorista123@Senha',
     email: 'motorista@departamento-estadual-rodovias.com',
-    role: Roles.DRIVER,
+    role: Roles.INSPETOR_VIA,
     status: UserStatus.ACTIVE,
     cpf: '222.222.222-22',
     phone: '(11) 96666-6666',
@@ -244,7 +244,7 @@ async function seedUsers(companyId: string) {
         password: hashedPassword,
         permissions: {
           create: [
-            { permissionType: PermissionType.DRIVER },
+            { permissionType: PermissionType.INSPETOR_VIA },
             { permissionType: PermissionType.APPOINTMENTS },
           ],
         },
@@ -255,15 +255,20 @@ async function seedUsers(companyId: string) {
 }
 
 async function seedClients(companyId: string) {
-
+  const adminEmail = 'admin@departamento-estadual-rodovias.com';
   const adminUser = await prisma.user.findFirst({
     where: {
-      email: 'admin@itamoving.com',
+      email: adminEmail,
     },
     select: {
       id: true,
     },
   });
+  if (!adminUser) {
+    throw new Error(
+      `[Seed] Usuário admin não encontrado para vincular cliente (${adminEmail})`,
+    );
+  }
 
   // Cliente de teste para verificação no frontend
   const clientData = {
@@ -290,7 +295,7 @@ async function seedClients(companyId: string) {
       cep: '01234-567',
       complemento: 'Apt 101',
     },
-    userId: adminUser?.id ?? '',
+    userId: adminUser.id,
     status: ClientStatus.ACTIVE,
   };
   const existsClient = await prisma.client.findFirst({

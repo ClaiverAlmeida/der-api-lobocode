@@ -50,11 +50,11 @@ export class UserFactory {
   }
 
   criarSupervisor(dto: CreateSupervisorDto): Prisma.UserCreateInput {
-    return this.criarUsuarioBase(dto, Roles.LOGISTICS);
+    return this.criarUsuarioBase(dto, Roles.OPERADOR);
   }
 
   criarGuard(dto: CreateGuardDto): Prisma.UserCreateInput {
-    return this.criarUsuarioBase(dto, Roles.DRIVER);
+    return this.criarUsuarioBase(dto, Roles.INSPETOR_VIA);
   }
 
   criarHR(dto: CreateHRDto): Prisma.UserCreateInput {
@@ -62,10 +62,10 @@ export class UserFactory {
   }
 
   criarPostSupervisor(dto: CreatePostSupervisorDto): Prisma.UserCreateInput {
-    return this.criarUsuarioBase(dto, Roles.LOGISTICS);
+    return this.criarUsuarioBase(dto, Roles.OPERADOR);
   }
 
   criarPostResident(dto: CreatePostResidentDto): Prisma.UserCreateInput {
-    return this.criarUsuarioBase(dto, Roles.LOGISTICS);
+    return this.criarUsuarioBase(dto, Roles.OPERADOR);
   }
 }

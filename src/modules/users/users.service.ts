@@ -134,7 +134,7 @@ export class UsersService extends BaseUserService {
     const whereClause: Prisma.UserWhereInput = {
       ...baseWhereClause,
       role: {
-        in: [Roles.COMERCIAL, Roles.LOGISTICS],
+        in: [Roles.FISCAL_CAMPO, Roles.OPERADOR],
       },
     };
 
@@ -177,9 +177,9 @@ export class UsersService extends BaseUserService {
    * Busca vigilantes ativos em turno no posto específico
    */
   async buscarVigilantesAtivosEmTurnoNoPosto(_postId: string) {
-    // Schema DEPARTAMENTO ESTADUAL DE RODOVIAS: sem Shift/Post - retorna usuários ativos com role DRIVER/LOGISTICS
+    // Schema DEPARTAMENTO ESTADUAL DE RODOVIAS: sem Shift/Post - retorna usuários ativos com role INSPETOR_VIA/OPERADOR
     const whereClause = this.userQueryService.construirWhereClauseParaRead({
-      role: { in: [Roles.DRIVER, Roles.LOGISTICS] },
+      role: { in: [Roles.INSPETOR_VIA, Roles.OPERADOR] },
       status: UserStatus.ACTIVE,
     });
 
@@ -196,13 +196,13 @@ export class UsersService extends BaseUserService {
 
   // Busca todos os motoristas ativos
   async buscarTodosMotoristas() {
-    const whereClause = { role: Roles.DRIVER, status: UserStatus.ACTIVE };
+    const whereClause = { role: Roles.INSPETOR_VIA, status: UserStatus.ACTIVE };
     return this.userRepository.buscarMuitos(whereClause);
   }
 
   async buscarTodosResponsaveisPorOrdensDeServico() {
     const whereClause = {
-      role: { in: [Roles.DRIVER, Roles.LOGISTICS] },
+      role: { in: [Roles.INSPETOR_VIA, Roles.OPERADOR] },
       status: UserStatus.ACTIVE,
     };
 

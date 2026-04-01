@@ -59,5 +59,56 @@ export class AssetsService extends UniversalService<
       orderBy: { createdAt: 'desc' },
     };
   }
+
+  /**
+   * Lista ativos (câmeras etc.) vinculados ao nome da rodovia,
+   * garantindo que a rodovia esteja ACTIVE e NÃO deletada (soft delete).
+   *
+   * Como `Asset.highway` é apenas uma String (sem relação Prisma),
+   * essa checagem precisa ser feita manualmente.
+   */
+  async buscarMuitosPorRodoviaAtiva(highwayName: string): Promise<{
+    data: any[];
+  }> {
+    const companyId = this.obterUsuarioLogado()?.companyId;
+
+    const highway = await this.repository.buscarPrimeiro('highway', {
+      name: highwayName,
+      status: 'ACTIVE',
+      deletedAt: null,
+      ...(companyId && { companyId }),
+    });
+
+    if (!highway) {
+      return { data: [] };
+    }
+
+    return this.buscarMuitosPorCampo('highway', highwayName);
+  }
+
+  /**
+   * Lista todos os assets, mas apenas os que estão vinculados a rodovias ACTIVE
+   * e não deletadas.
+   *
+   * Observacao:
+   * - `Asset.highway` eh apenas uma String (sem relacao Prisma).
+   * - Por isso, a filtragem por status da rodovia precisa ser feita manualmente.
+   */
+  async buscarTodos(): Promise<any[]> {
+    const assets = await super.buscarTodos();
+
+    const companyId = this.obterUsuarioLogado()?.companyId;
+    const activeHighways = await this.repository.buscarMuitos('highway', {
+      status: 'ACTIVE',
+      deletedAt: null,
+      ...(companyId && { companyId }),
+    });
+
+    const activeHighwaysNames = new Set(
+      activeHighways.map((h: any) => h.name),
+    );
+
+    return assets.filter((a: any) => activeHighwaysNames.has(a.highway));
+  }
 }
 

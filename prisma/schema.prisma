@@ -21,9 +21,9 @@ datasource db {
 enum Roles {
   SYSTEM_ADMIN // Administrador da plataforma
   ADMIN // Admin geral - acesso total
-  COMERCIAL // Comercial - clientes, agendamentos, atendimentos
-  LOGISTICS // Logístico - agendamentos, containers, estoque
-  DRIVER // Motorista - ordens de serviço, recibos
+  FISCAL_CAMPO // Comercial - clientes, agendamentos, atendimentos
+  OPERADOR // Logístico - agendamentos, containers, estoque
+  INSPETOR_VIA // Motorista - ordens de serviço, recibos
 }
 
 enum UserStatus {
@@ -44,7 +44,7 @@ enum PermissionType {
   SERVICE // Atendimentos
   HR // RH
   ROUTES // Rotas
-  DRIVER // Motorista
+  INSPETOR_VIA // Motorista
 }
 
 // ===============================================
@@ -302,12 +302,6 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  rg      String? @unique
-  cpf     String? @unique
-  phone   String?
-  address String?
-
-  employee       Employee?
   stockMovements StockMovement[]
   oauthAccounts  OAuthAccount[]
   clients        Client[]
@@ -818,8 +812,8 @@ model ProductPrice {
 // ===============================================
 // ORDEM DE SERVIÇO (Motorista)
 // ===============================================
-// driver: User que executa a entrega (role DRIVER)
-// attendant: User que atende/gerencia (role COMERCIAL ou outro)
+// driver: User que executa a entrega (role INSPETOR_VIA)
+// attendant: User que atende/gerencia (role FISCAL_CAMPO ou outro)
 
 model DriverServiceOrder {
   id              String                   @id @default(cuid())

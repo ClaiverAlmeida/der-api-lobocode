@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
     ports:
-      - '15432:5432' # departamento-estadual-rodovias: bloco 15xxx
+      - '3211:5432'
     volumes:
       - departamento-estadual-rodovias-api-lobocode_postgres_data:/var/lib/postgresql/data
       - ./postgres-entrypoint.sh:/usr/local/bin/postgres-entrypoint.sh:ro
@@ -44,7 +44,7 @@ services:
     image: redis:7-alpine
     container_name: departamento-estadual-rodovias-redis
     ports:
-      - '16379:6379' # departamento-estadual-rodovias: bloco 16xxx
+      - '3911:6379'
     volumes:
       - redis_data:/data
     deploy:

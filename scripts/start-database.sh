@@ -20,8 +20,8 @@ docker compose -f docker/docker-compose.database.yml ps
 
 echo ""
 echo "✅ Banco de dados iniciado!"
-echo "🗄️ PostgreSQL disponível em: localhost:15432 (departamento-estadual-rodovias)"
-echo "⚡ Redis disponível em: localhost:16379 (departamento-estadual-rodovias)"
+echo "🗄️ PostgreSQL disponível em: localhost:3211"
+echo "⚡ Redis disponível em: localhost:3911"
 echo ""
 echo "📋 Comandos úteis:"
 echo "  - Logs: docker compose -f docker/docker-compose.database.yml logs -f"

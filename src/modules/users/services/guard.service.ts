@@ -22,13 +22,13 @@ export class GuardService extends BaseUserService {
       userValidator,
       userQueryService,
       userPermissionService,
-      Roles.DRIVER,
+      Roles.INSPETOR_VIA,
     );
   }
 
-  //  Funcionalidades específicas (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: mapeado para DRIVER)
+  //  Funcionalidades específicas (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: mapeado para INSPETOR_VIA)
   async criarNovoGuard(dto: CreateGuardDto) {
-    this.userPermissionService.validarCriacaoDeUserComRole(Roles.DRIVER);
+    this.userPermissionService.validarCriacaoDeUserComRole(Roles.INSPETOR_VIA);
 
     // Valida se email é único
     await this.validarSeEmailEhUnico(dto.email);
