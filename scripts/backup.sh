@@ -15,8 +15,8 @@ BACKUP_FILE="$BACKUP_DIR/backup_$DATE.sql"
 
 echo "🗄️ Iniciando backup do banco de dados..."
 
-# Fazer backup
-docker compose -f docker/docker-compose.prod.yml exec -T db pg_dump -U $DB_USER $DB_NAME > $BACKUP_FILE
+# Fazer backup (DB está no compose database dedicado)
+docker compose -f docker/docker-compose.database.yml --env-file .env exec -T db pg_dump -U "$DB_USER" "$DB_NAME" > "$BACKUP_FILE"
 
 # Comprimir backup
 gzip $BACKUP_FILE

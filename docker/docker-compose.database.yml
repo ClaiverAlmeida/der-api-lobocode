@@ -1,3 +1,6 @@
+# Nome do projeto Compose explícito: evita colisão com outros repos que usam docker-compose em docker/
+name: der-api-lobocode-database
+
 services:
   # Database PostgreSQL
   db:

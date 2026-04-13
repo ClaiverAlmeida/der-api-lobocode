@@ -1,30 +1,29 @@
+# Produção: apenas backend.
+# Banco e Redis sobem por docker-compose.database.yml + scripts/start-database.sh
+name: der-api-lobocode-prod
+
 services:
-  # Backend NestJS
   backend:
     build:
       context: ..
       dockerfile: docker/Dockerfile.prod
     container_name: departamento-estadual-rodovias-backend
     env_file:
-      - .env
+      - ../.env
     ports:
       - '3011:3000'
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - PORT=3000
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@departamento-estadual-rodovias-db:5432/${DB_NAME}
       - JWT_SECRET=${JWT_SECRET}
-      - REDIS_URL=redis://redis:6379
-      - MINIO_HOST=minio
+      - REDIS_URL=redis://departamento-estadual-rodovias-redis:6379
+      - MINIO_HOST=departamento-estadual-rodovias-minio
       - MINIO_PORT=9000
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-admin}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-password123}
       - MINIO_USE_SSL=false
       - MINIO_ENDPOINT=https://api.departamento-estadual-rodovias.com.br/files
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
     restart: unless-stopped
     deploy:
       resources:
@@ -36,69 +35,6 @@ services:
           cpus: '0.2'
     networks:
       - app-net-departamento-estadual-rodovias
-
-  # Database PostgreSQL (usar rede externa)
-  db:
-    image: postgres:16.8-alpine3.20
-    container_name: departamento-estadual-rodovias-db
-    env_file:
-      - .env
-    environment:
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-    ports:
-      - '3211:5432'
-    volumes:
-      - departamento-estadual-rodovias-api-lobocode_postgres_data:/var/lib/postgresql/data
-      - ./backups:/backups
-      - ./postgres-entrypoint.sh:/usr/local/bin/postgres-entrypoint.sh:ro
-    entrypoint: ['/bin/bash', '/usr/local/bin/postgres-entrypoint.sh']
-    healthcheck:
-      # Só fica healthy DEPOIS do entrypoint sincronizar a senha (evita backend conectar com senha errada)
-      test:
-        [
-          'CMD-SHELL',
-          'test -f /tmp/postgres-entrypoint-done && pg_isready -U postgres',
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-          cpus: '0.3'
-        reservations:
-          memory: 256M
-          cpus: '0.1'
-    networks:
-      - app-net-departamento-estadual-rodovias
-
-  # Redis Cache (usar rede externa)
-  redis:
-    image: redis:7-alpine
-    container_name: departamento-estadual-rodovias-redis
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-          cpus: '0.1'
-        reservations:
-          memory: 64M
-          cpus: '0.05'
-    networks:
-      - app-net-departamento-estadual-rodovias
-
-volumes:
-  departamento-estadual-rodovias-api-lobocode_postgres_data:
-    external: true
-  redis_data:
 
 networks:
   app-net-departamento-estadual-rodovias:

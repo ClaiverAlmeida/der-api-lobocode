@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 import { CustomLoggerService } from './shared/common/logger/logger.service';
 import { MetricsInterceptor } from './shared/common/interceptors/metrics.interceptor';
 import { IoAdapter } from '@nestjs/platform-socket.io';
-import { runSeed } from 'prisma/seed';
+// import { runSeed } from 'prisma/seed';
 import session from 'express-session';
 
 async function bootstrap() {
@@ -35,11 +35,12 @@ async function bootstrap() {
       origin: [
         'https://api.departamento-estadual-rodovias.com.br',
         'https://api.departamento-estadual-rodovias.com',
+        'https://der-api.lobocode.com.br',
+        'https://der-app.lobocode.com.br',
         'http://31.97.166.94', // Nginx proxy
         'http://localhost:4200',
         'http://localhost:5173',
-        'http://localhost:5174',
-        'http://localhost:3000',
+        'http://localhost:5174', 
         'http://localhost:3001',
         'http://localhost:3002',
       ],
@@ -80,6 +81,7 @@ async function bootstrap() {
     logger.log(
       `📊 Health check disponível em http://localhost:${port}/health`,
       'Bootstrap',
+      
     );
     logger.log(
       `📈 Métricas disponíveis em http://localhost:${port}/metrics`,

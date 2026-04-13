@@ -1,3 +1,5 @@
+name: der-api-lobocode-unified
+
 services:
   # Nginx Reverse Proxy
   nginx:
@@ -29,7 +31,7 @@ services:
   # Frontend Angular
   frontend:
     image: departamento-estadual-rodovias-app-lobocode-frontend
-    container_name: frontend
+    container_name: departamento-estadual-rodovias-frontend
     ports:
       - '42100:80' # departamento-estadual-rodovias: bloco 42xxx
     restart: unless-stopped
@@ -54,6 +56,7 @@ services:
       - .env
     environment:
       - NODE_ENV=production
+      - PORT=3000
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
