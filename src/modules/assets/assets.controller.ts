@@ -34,8 +34,8 @@ export class AssetsController extends UniversalController<
   /**
    * Lista todos os ativos vinculados a uma localidade pelo nome exato
    */
-  @Get('location/:location')
-  async buscarPorRodovia(@Param('location') locationId: string) {
+  @Get('location/:locationId')
+  async buscarPorRodovia(@Param('locationId') locationId: string) {
     return this.service.buscarMuitosPorRodoviaAtiva(locationId);
   }
 

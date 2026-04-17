@@ -1,6 +1,5 @@
 import { Inject, Injectable, Optional, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
-import { ConflictError } from '../../shared/common/errors';
 import {
   UniversalService,
   UniversalRepository,
@@ -71,34 +70,6 @@ export class LocationsService extends UniversalService<
         exclude: ['companyId', 'regionalId'],
       },
     };
-
-  }
-
-  protected async antesDeCriar(data: CreateLocationsDto): Promise<void> {
-    const companyId = this.obterUsuarioLogado()?.companyId;
-
-    if (companyId && !data.companyId) {
-      data.companyId = companyId;
-    }
-
-    // if (data.code) {
-    //   const isUnique = await this.validarSeEhUnico('code', data.code);
-    //   if (!isUnique) {
-    //     throw new ConflictError('Código da localidade já está em uso');
-    //   }
-    // }
-  }
-
-  protected async antesDeAtualizar(
-    id: string,
-    data: UpdateLocationsDto,
-  ): Promise<void> {
-    // if (data.code) {
-    //   const isUnique = await this.validarSeEhUnico('code', data.code, id);
-    //   if (!isUnique) {
-    //     throw new ConflictError('Código da localidade já está em uso');
-    //   }
-    // }
   }
 }
 

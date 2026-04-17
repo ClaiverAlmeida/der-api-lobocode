@@ -68,8 +68,10 @@ export class UsersController {
   @Get('all-work-order-assignees')
   @CaslRead('User')
   @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR, Roles.INSPETOR_VIA)
-  buscarTodosResponsaveisPorOrdensDeServico() {
-    return this.service.buscarTodosResponsaveisPorOrdensDeServico();
+  buscarTodosResponsaveisPorOrdensDeServico(
+    @Query('locationId') locationId?: string,
+  ) {
+    return this.service.buscarTodosResponsaveisPorOrdensDeServico(locationId);
   }
 
   @Get()

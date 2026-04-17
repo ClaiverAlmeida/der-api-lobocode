@@ -81,7 +81,11 @@ export class AssetsService extends UniversalService<
       return { data: [] };
     }
 
-    return this.buscarMuitosPorCampo('locationId', locationId);
+    const result = await this.buscarMuitosPorCampo('locationId', locationId);
+    const list = Array.isArray(result.data) ? result.data : [];
+    return {
+      data: list.filter((a: { locationId?: string }) => a.locationId === locationId),
+    };
   }
 
   /**

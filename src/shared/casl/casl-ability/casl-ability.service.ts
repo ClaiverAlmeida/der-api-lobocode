@@ -1,7 +1,8 @@
 import { Injectable, Scope } from '@nestjs/common';
 import { AbilityBuilder, PureAbility } from '@casl/ability';
 import { createPrismaAbility, PrismaQuery, Subjects } from '@casl/prisma';
-import { $Enums, Roles, User, PermissionType } from '@prisma/client';
+import { Roles, User, PermissionType } from '@prisma/client';
+import { isUsuarioAdministradorEmpresaOuSistema } from '../../regional-scope/regional-scope.helper';
 
 // Tipo estendido para User com permissões
 type UserWithPermissions = User & {
@@ -106,6 +107,7 @@ const administrativePermissions = {
       companyId: user.companyId,
       role: { in: allowedRoles },
     });
+    
   },
 
   resourceManagement: (user: User, { can }: any) => {
@@ -138,6 +140,87 @@ const specificPermissions = {
 // ========================================
 // MAPEAMENTO DE ROLES (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: SYSTEM_ADMIN, ADMIN, FISCAL_CAMPO, OPERADOR, INSPETOR_VIA)
 // ========================================
+
+/**
+ * Inspetor não recebe `companyRead`; concede leitura mínima da cadeia regional → localidade → ativo.
+ */
+function concederLeituraCadeiaRegionalCampo(user: User, { can }: any) {
+  if (!user.regionalId) {
+    return;
+  }
+  const c = user.companyId;
+  const r = user.regionalId;
+  can('read', 'Regional', { companyId: c, id: r });
+  can('read', 'Location', { companyId: c, regionalId: r });
+  can('read', 'Asset', { companyId: c, location: { regionalId: r } });
+}
+
+/**
+ * Restringe leitura e mutação de Regional, Location, Asset, WorkOrder e User (listagens)
+ * ao escopo da regional do usuário. Admin / SYSTEM_ADMIN não são alterados.
+ */
+function aplicarRestricoesRegionaisNaoAdmin(user: User, { cannot }: any) {
+  if (isUsuarioAdministradorEmpresaOuSistema(user)) {
+    return;
+  }
+
+  const c = user.companyId;
+
+  if (!user.regionalId) {
+    cannot('read', 'Regional', { companyId: c });
+    cannot('read', 'Location', { companyId: c });
+    cannot('read', 'Asset', { companyId: c });
+    cannot('read', 'WorkOrder', { companyId: c });
+    for (const action of ['create', 'update', 'delete'] as const) {
+      cannot(action, 'Regional', { companyId: c });
+      cannot(action, 'Location', { companyId: c });
+      cannot(action, 'Asset', { companyId: c });
+      cannot(action, 'WorkOrder', { companyId: c });
+    }
+    cannot('read', 'User', { companyId: c, NOT: { id: user.id } });
+    for (const action of ['create', 'update', 'delete'] as const) {
+      cannot(action, 'User', { companyId: c, NOT: { id: user.id } });
+    }
+    return;
+  }
+
+  const r = user.regionalId;
+
+  cannot('read', 'Regional', { companyId: c, NOT: { id: r } });
+  cannot('read', 'Location', { companyId: c, NOT: { regionalId: r } });
+  cannot('read', 'Asset', {
+    companyId: c,
+    NOT: { location: { regionalId: r } },
+  });
+  cannot('read', 'WorkOrder', {
+    companyId: c,
+    NOT: { asset: { location: { regionalId: r } } },
+  });
+
+  for (const action of ['create', 'update', 'delete'] as const) {
+    cannot(action, 'Regional', { companyId: c, NOT: { id: r } });
+    cannot(action, 'Location', { companyId: c, NOT: { regionalId: r } });
+    cannot(action, 'Asset', {
+      companyId: c,
+      NOT: { location: { regionalId: r } },
+    });
+    cannot(action, 'WorkOrder', {
+      companyId: c,
+      NOT: { asset: { location: { regionalId: r } } },
+    });
+  }
+
+  cannot('read', 'User', {
+    companyId: c,
+    NOT: { OR: [{ id: user.id }, { regionalId: r }] },
+  });
+  for (const action of ['create', 'update', 'delete'] as const) {
+    cannot(action, 'User', {
+      companyId: c,
+      NOT: { OR: [{ id: user.id }, { regionalId: r }] },
+    });
+  }
+}
 
 const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
   SYSTEM_ADMIN: (user: User, { can }: any) => {
@@ -192,14 +275,27 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
 export class CaslAbilityService {
   ability: AppAbility;
 
+  /** Usuário da requisição (para filtros adicionais fora do CASL). */
+  private usuarioAtivo!: User;
+
   createForUser(user: User) {
     const builder = new AbilityBuilder<AppAbility>(createPrismaAbility);
+    this.usuarioAtivo = user;
 
-    // Aplica permissões baseadas no role
     rolePermissionsMap[user.role](user, builder);
+
+    if (user.role === Roles.INSPETOR_VIA) {
+      concederLeituraCadeiaRegionalCampo(user, builder);
+    }
+
+    aplicarRestricoesRegionaisNaoAdmin(user, builder);
 
     this.ability = builder.build();
     return this.ability;
+  }
+
+  obterUsuarioAtivo(): User {
+    return this.usuarioAtivo;
   }
 
   // Método auxiliar para verificar permissões específicas

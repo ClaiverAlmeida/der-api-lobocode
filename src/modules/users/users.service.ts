@@ -23,6 +23,17 @@ import {
 import { CreateOthersDto } from './dto/create-others.dto';
 import { Prisma, Roles, UserStatus } from '@prisma/client';
 import { UserFactory } from './factories/user.factory';
+import { PrismaService } from '../../shared/prisma/prisma.service';
+import { TenantService } from '../../shared/tenant/tenant.service';
+
+function montarRotuloResponsavelOs(
+  name: string,
+  regional: { name: string; region: string } | null | undefined,
+): string {
+  const nomeRegional = regional?.name?.trim() || '—';
+  const regiao = regional?.region?.trim() || '—';
+  return `${name} - ${nomeRegional} - ${regiao}`;
+}
 
 @Injectable()
 export class UsersService extends BaseUserService {
@@ -31,6 +42,8 @@ export class UsersService extends BaseUserService {
     userValidator: UserValidator,
     userQueryService: UserQueryService,
     userPermissionService: UserPermissionService,
+    private readonly prisma: PrismaService,
+    private readonly tenantService: TenantService,
     private systemAdminService: SystemAdminService,
     private adminService: AdminService,
     private supervisorService: SupervisorService,
@@ -200,12 +213,75 @@ export class UsersService extends BaseUserService {
     return this.userRepository.buscarMuitos(whereClause);
   }
 
-  async buscarTodosResponsaveisPorOrdensDeServico() {
-    const whereClause = {
+  /**
+   * Responsáveis elegíveis para OS (toda a empresa). Com `locationId`, prioriza usuários
+   * cuja regional coincide com a da localidade (depois ordena por nome).
+   */
+  async buscarTodosResponsaveisPorOrdensDeServico(locationId?: string) {
+    const companyId = this.tenantService.getCompanyId();
+
+    let regionalPrioridadeId: string | null = null;
+    const lid = locationId?.trim();
+    if (lid) {
+      const loc = await this.prisma.location.findFirst({
+        where: {
+          id: lid,
+          deletedAt: null,
+          ...(companyId ? { companyId } : {}),
+        },
+        select: { regionalId: true },
+      });
+      regionalPrioridadeId = loc?.regionalId ?? null;
+    }
+
+    const whereClause: Prisma.UserWhereInput = {
       role: { in: [Roles.INSPETOR_VIA, Roles.OPERADOR] },
       status: UserStatus.ACTIVE,
+      deletedAt: null,
+      ...(companyId ? { companyId } : {}),
     };
 
-    return this.userRepository.buscarMuitos(whereClause);
+    const includeAssignee: Prisma.UserInclude = {
+      company: {
+        select: { id: true, name: true, cnpj: true, address: true },
+      },
+      permissions: {
+        select: { permissionType: true },
+      },
+      regional: {
+        select: { id: true, name: true, region: true },
+      },
+    };
+
+    let users = (await this.userRepository.buscarMuitos(
+      whereClause,
+      undefined,
+      includeAssignee,
+    )) as Prisma.UserGetPayload<{ include: typeof includeAssignee }>[];
+
+    if (regionalPrioridadeId) {
+      users = [...users].sort((a, b) => {
+        const ap = a.regionalId === regionalPrioridadeId ? 0 : 1;
+        const bp = b.regionalId === regionalPrioridadeId ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+        return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
+      });
+    } else {
+      users = [...users].sort((a, b) =>
+        a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }),
+      );
+    }
+
+    return users.map((u) => {
+      const regional = u.regional;
+      return {
+        id: u.id,
+        name: u.name,
+        label: montarRotuloResponsavelOs(u.name, regional),
+        regionalId: u.regionalId,
+        regionalName: regional?.name ?? null,
+        region: regional?.region ?? null,
+      };
+    });
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Scope } from '@nestjs/common';
 import { CaslAbilityService } from '../../casl/casl-ability/casl-ability.service';
 import { TenantService } from '../../tenant/tenant.service';
 import { accessibleBy } from '@casl/prisma';
@@ -6,6 +6,7 @@ import { CrudAction } from '../../common/types';
 import { EntityNameCasl } from '../types';
 import { ForbiddenError } from '../../common/errors';
 import { ERROR_MESSAGES } from 'src/shared/common/messages';
+import { construirClausulaAndEscopoRegional } from '../../regional-scope/regional-scope.helper';
 
 /** Entidades que não possuem companyId no schema (ex.: sub-módulos de Employee). */
 const ENTITIES_WITHOUT_COMPANY: EntityNameCasl[] = [];
@@ -25,7 +26,7 @@ function stripCompanyIdFromWhere(where: any): void {
   }
 }
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class UniversalQueryService {
   constructor(
     private abilityService: CaslAbilityService,
@@ -95,6 +96,17 @@ export class UniversalQueryService {
         ...additionalWhere,
         AND: [accessibleBy(ability, action)[entityName]],
       };
+
+      const usuario = this.abilityService.obterUsuarioAtivo();
+      if (usuario) {
+        const escopoRegional = construirClausulaAndEscopoRegional(
+          entityName,
+          usuario,
+        );
+        if (escopoRegional) {
+          whereClause.AND.push(escopoRegional);
+        }
+      }
 
       // Só adiciona deletedAt se a entidade tiver soft delete
       if (!this.entitiesWithoutSoftDelete.includes(entityName)) {
