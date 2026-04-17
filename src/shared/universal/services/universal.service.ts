@@ -29,10 +29,7 @@ export abstract class UniversalService<DtoCreate, DtoUpdate> {
   /**
    * Lista de entidades que NÃO têm soft delete (deletedAt)
    */
-  private readonly entitiesWithoutSoftDelete: EntityNameModel[] = [
-    'panicEvent',
-    'stock',
-  ];
+  private readonly entitiesWithoutSoftDelete: EntityNameModel[] = [];
 
   /**
    * Verifica se a entidade tem soft delete

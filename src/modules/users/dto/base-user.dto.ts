@@ -7,17 +7,21 @@ import {
   IsArray,
 } from 'class-validator';
 import {
-  IsCPF,
+  IsCUID,
   IsPhoneNumberBR,
   IsStrongPassword,
   IsUniqueEmail,
-  IsUniqueCPF,
   IsUniqueLogin,
 } from '../../../shared/validators';
 import { VALIDATION_MESSAGES } from '../../../shared/common/messages';
 import { PermissionType, UserStatus } from '@prisma/client';
 
 export class BaseUserDto {
+  @IsOptional()
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
+  regionalId?: string;
+
   @IsString({ message: VALIDATION_MESSAGES.REQUIRED.NAME })
   @MinLength(2, { message: VALIDATION_MESSAGES.LENGTH.NAME_MIN })
   name: string;
@@ -35,15 +39,6 @@ export class BaseUserDto {
   password: string;
 
   @IsOptional()
-  @IsCPF({ message: VALIDATION_MESSAGES.FORMAT.CPF_INVALID })
-  @IsUniqueCPF({ message: VALIDATION_MESSAGES.UNIQUENESS.CPF_EXISTS })
-  cpf?: string;
-
-  @IsOptional()
-  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  rg?: string;
-
-  @IsOptional()
   @IsPhoneNumberBR({ message: VALIDATION_MESSAGES.FORMAT.PHONE_INVALID })
   phone?: string;
 
@@ -53,17 +48,12 @@ export class BaseUserDto {
 
   @IsOptional()
   @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  registration?: string;
-
-  @IsOptional()
-  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   profilePicture?: string;
 
   @IsOptional()
   @IsEnum(UserStatus, { message: VALIDATION_MESSAGES.FORMAT.ENUM_INVALID })
   status?: UserStatus;
 
-  
   @IsOptional()
   @IsArray({ message: VALIDATION_MESSAGES.FORMAT.ARRAY_INVALID })
   @IsEnum(PermissionType, { each: true, message: VALIDATION_MESSAGES.FORMAT.ENUM_INVALID })

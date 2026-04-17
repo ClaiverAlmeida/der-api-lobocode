@@ -1,5 +1,10 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
+cd_project_root
+require_docker_running
+
 echo "📁 Iniciando MinIO DEPARTAMENTO ESTADUAL DE RODOVIAS..."
 
 # Verificar se está no diretório correto
@@ -9,18 +14,15 @@ if [ ! -f "docker/docker-compose.minio.yml" ]; then
 fi
 
 # Criar rede se não existir
-if ! docker network ls | grep -q "app-net-departamento-estadual-rodovias"; then
-    echo "📡 Criando rede app-net-departamento-estadual-rodovias..."
-    docker network create --driver bridge app-net-departamento-estadual-rodovias
-fi
+ensure_network "app-net-departamento-estadual-rodovias" "bridge"
 
 # Parar containers existentes
 echo "🛑 Parando containers existentes..."
-docker compose -f docker/docker-compose.minio.yml --env-file .env down
+compose -f docker/docker-compose.minio.yml --env-file .env down
 
 # Iniciar MinIO
 echo "▶️ Iniciando MinIO..."
-docker compose -f docker/docker-compose.minio.yml --env-file .env up -d
+compose -f docker/docker-compose.minio.yml --env-file .env up -d
 
 # Aguardar inicialização
 echo "⏳ Aguardando inicialização..."
@@ -28,7 +30,7 @@ sleep 10
 
 # Verificar status
 echo "📊 Status dos containers:"
-docker compose -f docker/docker-compose.minio.yml --env-file .env ps
+compose -f docker/docker-compose.minio.yml --env-file .env ps
 
 echo ""
 echo "✅ MinIO iniciado!"

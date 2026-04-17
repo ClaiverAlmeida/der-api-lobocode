@@ -1,12 +1,12 @@
-import { Body, Controller, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Patch, UseGuards } from '@nestjs/common';
 import { Roles } from '@prisma/client';
 import { AuthGuard } from 'src/shared/auth/guards/auth.guard';
 import { RoleByMethodGuard } from 'src/shared/auth/guards/role-by-method.guard';
 import { RoleByMethod } from 'src/shared/auth/role-by-method.decorator';
 import { UniversalController } from 'src/shared/universal';
-import { CreateHighwayDto } from './dto/create-highway.dto';
-import { UpdateHighwayDto } from './dto/update-highway.dto';
-import { HighwaysService } from './highways.service';
+import { CreateLocationsDto } from './dto/create-locations.dto';
+import { UpdateLocationsDto } from './dto/update-locations.dto';
+import { LocationsService } from './locations.service';
 
 @UseGuards(AuthGuard, RoleByMethodGuard)
 @RoleByMethod({
@@ -21,13 +21,13 @@ import { HighwaysService } from './highways.service';
   PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR],
   DELETE: [Roles.SYSTEM_ADMIN, Roles.ADMIN],
 })
-@Controller('highways')
-export class HighwaysController extends UniversalController<
-  CreateHighwayDto,
-  UpdateHighwayDto,
-  HighwaysService
+@Controller('locations')
+export class LocationsController extends UniversalController<
+  CreateLocationsDto,
+  UpdateLocationsDto,
+  LocationsService
 > {
-  constructor(service: HighwaysService) {
+  constructor(service: LocationsService) {
     super(service);
   }
 }

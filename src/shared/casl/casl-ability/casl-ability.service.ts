@@ -31,7 +31,8 @@ export type PermissionResource =
       Appointment: any;
       File: any;
       Notification: any;
-      Highway: any;
+      Regional: any;
+      Location: any;
       Asset: any;
       WorkOrder: any;
     }>

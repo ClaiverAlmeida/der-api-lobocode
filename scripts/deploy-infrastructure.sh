@@ -1,5 +1,12 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
+cd_project_root
+require_docker_running
+require_command curl
+require_command openssl
+
 echo "🏗️ Deploy Infraestrutura - DEPARTAMENTO ESTADUAL DE RODOVIAS"
 
 # Verificar se está no diretório correto
@@ -10,9 +17,9 @@ fi
 
 # Criar rede se não existir
 echo "🔧 Verificando rede app-net-departamento-estadual-rodovias..."
-if ! docker network ls | grep -q "app-net-departamento-estadual-rodovias"; then
+if ! network_exists "app-net-departamento-estadual-rodovias"; then
     echo "📡 Criando rede app-net-departamento-estadual-rodovias..."
-    docker network create --driver bridge app-net-departamento-estadual-rodovias
+    ensure_network "app-net-departamento-estadual-rodovias" "bridge"
     echo "✅ Rede app-net-departamento-estadual-rodovias criada com sucesso!"
 else
     echo "✅ Rede app-net-departamento-estadual-rodovias já existe"
@@ -34,11 +41,11 @@ fi
 
 # Parar infraestrutura existente
 echo "🛑 Parando infraestrutura..."
-docker compose -f docker/docker-compose.infrastructure.yml down
+compose -f docker/docker-compose.infrastructure.yml down
 
 # Iniciar infraestrutura
 echo "🚀 Iniciando infraestrutura..."
-docker compose -f docker/docker-compose.infrastructure.yml up -d
+compose -f docker/docker-compose.infrastructure.yml up -d
 
 # Aguardar inicialização
 echo "⏳ Aguardando inicialização..."
@@ -46,7 +53,7 @@ sleep 5
 
 # Verificar status
 echo "📊 Status da infraestrutura:"
-docker compose -f docker/docker-compose.infrastructure.yml ps
+compose -f docker/docker-compose.infrastructure.yml ps
 
 # Testar Nginx
 echo "🌐 Testando Nginx..."

@@ -15,13 +15,12 @@ import {
   UniversalPermissionService,
   createEntityConfig,
 } from '../../shared/universal/index';
-import { ActionType, EntityName } from 'src/shared/universal/enums';
+import { EntityName } from 'src/shared/universal/enums';
 import { withDateFields } from '../../shared/common/utils';
 import { CreateAppointmentsDto } from './dto/create-appointments.dto';
 import { UpdateAppointmentsDto } from './dto/update-appointments.dto';
 import { Roles } from '@prisma/client';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import { ClientsHistoryService } from '../clients/services/clients-history.service';
 
 const DATE_KEYS: (keyof CreateAppointmentsDto)[] = ['collectionDate'];
 
@@ -41,7 +40,6 @@ export class AppointmentsService extends UniversalService<
     permissionService: UniversalPermissionService,
     metricsService: UniversalMetricsService,
     private readonly prisma: PrismaService,
-    private readonly clientsHistoryService: ClientsHistoryService,
     @Optional() @Inject(REQUEST) request: any,
   ) {
     const { model, casl } = AppointmentsService.entityConfig;
@@ -110,16 +108,6 @@ export class AppointmentsService extends UniversalService<
       withDateFields(data, DATE_KEYS) as CreateAppointmentsDto,
       include,
       role,
-    );
-  }
-
-  /** History Client - Create Appointment */
-  async depoisDeCriar(data: any) {
-    await this.clientsHistoryService.create(
-      data.clientId,
-      data.userId,
-      data.id,
-      EntityName.APPOINTMENT,
     );
   }
 }

@@ -79,10 +79,7 @@ export class UniversalQueryService {
   /**
    * Lista de entidades que NÃO têm soft delete (deletedAt)
    */
-  private readonly entitiesWithoutSoftDelete: EntityNameCasl[] = [
-    'PanicEvent',
-    'Stock',
-  ];
+  private readonly entitiesWithoutSoftDelete: EntityNameCasl[] = [];
 
   private construirWhereClauseBase(
     entityName: EntityNameCasl,

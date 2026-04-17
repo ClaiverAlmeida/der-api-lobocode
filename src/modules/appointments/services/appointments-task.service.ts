@@ -15,8 +15,7 @@ export class AppointmentsTaskService {
         return d.toISOString();
     }
 
-    // @Cron(CronExpression.EVERY_DAY_AT_11AM)
-    @Cron(CronExpression.EVERY_30_SECONDS)
+    @Cron(CronExpression.EVERY_DAY_AT_11AM)
     async handleCron() {
         return this.getAppointmentsForTomorrow();
     }

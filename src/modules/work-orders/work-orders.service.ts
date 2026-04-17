@@ -45,7 +45,7 @@ export class WorkOrdersService extends UniversalService<
       select: {
         id: true,
         name: true,
-        highway: true,
+        location: true,
         km: true,
         direction: true,
         status: true,
@@ -123,7 +123,7 @@ export class WorkOrdersService extends UniversalService<
           select: {
             id: true,
             name: true,
-            highway: true,
+            location: true,
             km: true,
             direction: true,
             status: true,
@@ -409,6 +409,13 @@ export class WorkOrdersService extends UniversalService<
             id: true,
             name: true,
             role: true,
+          },
+        },
+        asset: {
+          select: {
+            id: true,
+            name: true,
+            location: true,
           },
         },
       },

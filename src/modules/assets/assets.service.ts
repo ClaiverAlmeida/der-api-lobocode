@@ -61,29 +61,27 @@ export class AssetsService extends UniversalService<
   }
 
   /**
-   * Lista ativos (câmeras etc.) vinculados ao nome da rodovia,
-   * garantindo que a rodovia esteja ACTIVE e NÃO deletada (soft delete).
+   * Lista ativos (câmeras etc.) vinculados ao nome da localidade,
+   * garantindo que a localidade esteja ACTIVE e NÃO deletada (soft delete).
    *
-   * Como `Asset.highway` é apenas uma String (sem relação Prisma),
-   * essa checagem precisa ser feita manualmente.
    */
-  async buscarMuitosPorRodoviaAtiva(highwayName: string): Promise<{
+  async buscarMuitosPorRodoviaAtiva(locationId: string): Promise<{
     data: any[];
   }> {
     const companyId = this.obterUsuarioLogado()?.companyId;
 
-    const highway = await this.repository.buscarPrimeiro('highway', {
-      name: highwayName,
+    const location = await this.repository.buscarPrimeiro('location', {
+      id: locationId,
       status: 'ACTIVE',
       deletedAt: null,
       ...(companyId && { companyId }),
     });
 
-    if (!highway) {
+    if (!location) {
       return { data: [] };
     }
 
-    return this.buscarMuitosPorCampo('highway', highwayName);
+    return this.buscarMuitosPorCampo('locationId', locationId);
   }
 
   /**
@@ -91,24 +89,24 @@ export class AssetsService extends UniversalService<
    * e não deletadas.
    *
    * Observacao:
-   * - `Asset.highway` eh apenas uma String (sem relacao Prisma).
+   * - `Asset.location` eh apenas uma String (sem relacao Prisma).
    * - Por isso, a filtragem por status da rodovia precisa ser feita manualmente.
    */
   async buscarTodos(): Promise<any[]> {
     const assets = await super.buscarTodos();
 
     const companyId = this.obterUsuarioLogado()?.companyId;
-    const activeHighways = await this.repository.buscarMuitos('highway', {
+    const activelocations = await this.repository.buscarMuitos('location', {
       status: 'ACTIVE',
       deletedAt: null,
       ...(companyId && { companyId }),
     });
 
-    const activeHighwaysNames = new Set(
-      activeHighways.map((h: any) => h.name),
+    const activelocationsIds = new Set(
+      activelocations.map((h: any) => h.id),
     );
 
-    return assets.filter((a: any) => activeHighwaysNames.has(a.highway));
+    return assets.filter((a: any) => activelocationsIds.has(a.locationId));
   }
 }
 

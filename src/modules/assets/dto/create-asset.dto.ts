@@ -1,5 +1,6 @@
 import {
   IsEnum,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -32,8 +33,10 @@ export class CreateAssetDto {
   })
   type: AssetType;
 
+  @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
   @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  highway: string;
+  @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
+  locationId: string;
 
   @Type(() => Number)
   @IsNumber({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })

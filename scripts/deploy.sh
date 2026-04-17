@@ -3,6 +3,11 @@
 # Script principal de deploy do DEPARTAMENTO ESTADUAL DE RODOVIAS
 # Uso: ./scripts/deploy.sh [comando]
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
+cd_project_root
+require_docker_running
+
 # Cores para output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -39,7 +44,7 @@ show_help() {
 
 # Função para verificar se está no diretório correto
 check_directory() {
-    if [ ! -f "docker/docker-compose.yml" ]; then
+    if [ ! -f "docker/docker-compose.backend.yml" ]; then
         echo -e "${RED}❌ Erro: Execute este script no diretório do projeto${NC}"
         exit 1
     fi
@@ -73,12 +78,9 @@ start_database() {
     echo -e "${BLUE}🗄️ Iniciando Database - DEPARTAMENTO ESTADUAL DE RODOVIAS${NC}"
     
     # Criar rede se não existir
-    if ! docker network ls | grep -q "app-net-departamento-estadual-rodovias"; then
-        echo "📡 Criando rede app-net-departamento-estadual-rodovias..."
-        docker network create --driver bridge app-net-departamento-estadual-rodovias
-    fi
+    ensure_network "app-net-departamento-estadual-rodovias" "bridge"
     
-    docker compose -f docker/docker-compose.database.yml up -d
+    compose -f docker/docker-compose.database.yml up -d
     echo "✅ Database iniciado!"
 }
 
@@ -87,12 +89,9 @@ start_monitoring() {
     echo -e "${BLUE}📊 Iniciando Monitoramento - DEPARTAMENTO ESTADUAL DE RODOVIAS${NC}"
     
     # Criar rede se não existir
-    if ! docker network ls | grep -q "app-net-departamento-estadual-rodovias"; then
-        echo "📡 Criando rede app-net-departamento-estadual-rodovias..."
-        docker network create --driver bridge app-net-departamento-estadual-rodovias
-    fi
+    ensure_network "app-net-departamento-estadual-rodovias" "bridge"
     
-    docker compose -f docker/docker-compose.monitoring.yml up -d
+    compose -f docker/docker-compose.monitoring.yml up -d
     echo "✅ Monitoramento iniciado!"
 }
 
@@ -101,12 +100,9 @@ start_minio() {
     echo -e "${BLUE}📁 Iniciando MinIO - DEPARTAMENTO ESTADUAL DE RODOVIAS${NC}"
     
     # Criar rede se não existir
-    if ! docker network ls | grep -q "app-net-departamento-estadual-rodovias"; then
-        echo "📡 Criando rede app-net-departamento-estadual-rodovias..."
-        docker network create --driver bridge app-net-departamento-estadual-rodovias
-    fi
+    ensure_network "app-net-departamento-estadual-rodovias" "bridge"
     
-    docker compose -f docker/docker-compose.minio.yml up -d
+    compose -f docker/docker-compose.minio.yml up -d
     echo "✅ MinIO iniciado!"
 }
 
@@ -143,28 +139,28 @@ show_logs() {
     
     case $choice in
         1)
-            docker compose -f docker/docker-compose.prod.yml logs -f backend
+            compose -f docker/docker-compose.prod.yml logs -f backend
             ;;
         2)
-            docker compose -f docker/docker-compose.database.yml logs -f db
+            compose -f docker/docker-compose.database.yml logs -f db
             ;;
         3)
-            docker compose -f docker/docker-compose.database.yml logs -f redis
+            compose -f docker/docker-compose.database.yml logs -f redis
             ;;
         4)
-            docker compose -f docker/docker-compose.unified.yml logs -f minio
+            compose -f docker/docker-compose.unified.yml logs -f minio
             ;;
         5)
-            docker compose -f docker/docker-compose.infrastructure.yml logs -f nginx
+            compose -f docker/docker-compose.infrastructure.yml logs -f nginx
             ;;
         6)
-            docker compose -f docker/docker-compose.monitoring.yml logs -f prometheus
+            compose -f docker/docker-compose.monitoring.yml logs -f prometheus
             ;;
         7)
-            docker compose -f docker/docker-compose.monitoring.yml logs -f grafana
+            compose -f docker/docker-compose.monitoring.yml logs -f grafana
             ;;
         8)
-            docker compose -f docker/docker-compose.unified.yml logs -f
+            compose -f docker/docker-compose.unified.yml logs -f
             ;;
         *)
             echo "Opção inválida"
@@ -176,12 +172,12 @@ show_logs() {
 stop_all() {
     echo -e "${BLUE}🛑 Parando todos os serviços - DEPARTAMENTO ESTADUAL DE RODOVIAS${NC}"
     
-    docker compose -f docker/docker-compose.unified.yml down
-    docker compose -f docker/docker-compose.prod.yml down
-    docker compose -f docker/docker-compose.backend.yml down
-    docker compose -f docker/docker-compose.database.yml down
-    docker compose -f docker/docker-compose.infrastructure.yml down
-    docker compose -f docker/docker-compose.monitoring.yml down
+    compose -f docker/docker-compose.unified.yml down
+    compose -f docker/docker-compose.prod.yml down
+    compose -f docker/docker-compose.backend.yml down
+    compose -f docker/docker-compose.database.yml down
+    compose -f docker/docker-compose.infrastructure.yml down
+    compose -f docker/docker-compose.monitoring.yml down
     
     echo "✅ Todos os serviços parados!"
 }
@@ -191,12 +187,12 @@ cleanup() {
     echo -e "${BLUE}🧹 Limpeza de recursos - DEPARTAMENTO ESTADUAL DE RODOVIAS${NC}"
     
     # Parar containers órfãos
-    docker compose -f docker/docker-compose.unified.yml down --remove-orphans
-    docker compose -f docker/docker-compose.prod.yml down --remove-orphans
-    docker compose -f docker/docker-compose.backend.yml down --remove-orphans
-    docker compose -f docker/docker-compose.database.yml down --remove-orphans
-    docker compose -f docker/docker-compose.infrastructure.yml down --remove-orphans
-    docker compose -f docker/docker-compose.monitoring.yml down --remove-orphans
+    compose -f docker/docker-compose.unified.yml down --remove-orphans
+    compose -f docker/docker-compose.prod.yml down --remove-orphans
+    compose -f docker/docker-compose.backend.yml down --remove-orphans
+    compose -f docker/docker-compose.database.yml down --remove-orphans
+    compose -f docker/docker-compose.infrastructure.yml down --remove-orphans
+    compose -f docker/docker-compose.monitoring.yml down --remove-orphans
     
     # Limpar recursos não utilizados
     docker system prune -f

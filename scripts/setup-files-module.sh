@@ -1,5 +1,11 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
+cd_project_root
+require_command npm
+require_command npx
+
 echo "🚀 Configurando módulo de arquivos..."
 
 # Instalar dependências
@@ -18,7 +24,7 @@ npx prisma migrate dev --name add-files-module
 echo "✅ Módulo de arquivos configurado com sucesso!"
 echo ""
 echo "📋 Próximos passos:"
-echo "1. Iniciar o MinIO: docker-compose up minio"
+echo "1. Iniciar o MinIO: docker compose up minio"
 echo "2. Acessar o console MinIO: http://localhost:19001"
 echo "3. Login: admin / password123"
 echo "4. Testar upload: POST http://localhost:30100/files/upload"

@@ -34,7 +34,6 @@ export class AdminService extends BaseUserService {
     // Validações comuns
     await this.validarSeEmailEhUnico(dto.email);
     if (dto.companyId) await this.validarSeCompanyExiste(dto.companyId);
-    if (dto.cpf) await this.validarSeCPFEhUnico(dto.cpf);
     if (dto.phone) await this.validarSePhoneEhUnico(dto.phone);
 
     // Criação do usuário

@@ -3,6 +3,10 @@
 # Script para gerenciar a rede app-net-departamento-estadual-rodovias do DEPARTAMENTO ESTADUAL DE RODOVIAS
 # Uso: ./scripts/network-manager.sh [create|remove|status]
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
+cd_project_root
+
 NETWORK_NAME="app-net-departamento-estadual-rodovias"
 NETWORK_DRIVER="bridge"
 
@@ -36,7 +40,7 @@ create_network() {
     echo -e "${BLUE}🔧 Criando rede ${NETWORK_NAME}...${NC}"
     
     # Verificar se a rede já existe
-    if docker network ls | grep -q "${NETWORK_NAME}"; then
+    if network_exists "${NETWORK_NAME}"; then
         echo -e "${YELLOW}⚠️  Rede ${NETWORK_NAME} já existe${NC}"
         return 0
     fi
@@ -55,13 +59,13 @@ remove_network() {
     echo -e "${BLUE}🗑️  Removendo rede ${NETWORK_NAME}...${NC}"
     
     # Verificar se a rede existe
-    if ! docker network ls | grep -q "${NETWORK_NAME}"; then
+    if ! network_exists "${NETWORK_NAME}"; then
         echo -e "${YELLOW}⚠️  Rede ${NETWORK_NAME} não existe${NC}"
         return 0
     fi
     
     # Verificar se há containers usando a rede
-    CONTAINERS_USING_NETWORK=$(docker network inspect ${NETWORK_NAME} --format='{{range .Containers}}{{.Name}} {{end}}')
+    CONTAINERS_USING_NETWORK=$(docker network inspect "${NETWORK_NAME}" --format='{{range .Containers}}{{.Name}} {{end}}')
     
     if [ -n "$CONTAINERS_USING_NETWORK" ]; then
         echo -e "${YELLOW}⚠️  Containers usando a rede:${NC}"
@@ -71,7 +75,7 @@ remove_network() {
     fi
     
     # Remover a rede
-    if docker network rm ${NETWORK_NAME}; then
+    if docker network rm "${NETWORK_NAME}"; then
         echo -e "${GREEN}✅ Rede ${NETWORK_NAME} removida com sucesso!${NC}"
     else
         echo -e "${RED}❌ Erro ao remover rede ${NETWORK_NAME}${NC}"
@@ -84,17 +88,17 @@ check_status() {
     echo -e "${BLUE}📊 Status da rede ${NETWORK_NAME}:${NC}"
     echo ""
     
-    if docker network ls | grep -q "${NETWORK_NAME}"; then
+    if network_exists "${NETWORK_NAME}"; then
         echo -e "${GREEN}✅ Rede ${NETWORK_NAME} existe${NC}"
         echo ""
         
         # Informações detalhadas da rede
         echo "📋 Informações da rede:"
-        docker network inspect ${NETWORK_NAME} --format='table {{.Name}}\t{{.Driver}}\t{{.Scope}}\t{{.IPAM.Config}}'
+        docker network inspect "${NETWORK_NAME}" --format='table {{.Name}}\t{{.Driver}}\t{{.Scope}}\t{{.IPAM.Config}}'
         echo ""
         
         # Containers conectados
-        CONTAINERS=$(docker network inspect ${NETWORK_NAME} --format='{{range .Containers}}{{.Name}} {{end}}')
+        CONTAINERS=$(docker network inspect "${NETWORK_NAME}" --format='{{range .Containers}}{{.Name}} {{end}}')
         if [ -n "$CONTAINERS" ]; then
             echo "🔗 Containers conectados:"
             for container in $CONTAINERS; do
@@ -113,11 +117,7 @@ check_status() {
 
 # Função para verificar se o Docker está rodando
 check_docker() {
-    if ! docker info >/dev/null 2>&1; then
-        echo -e "${RED}❌ Docker não está rodando${NC}"
-        echo "Inicie o Docker e tente novamente"
-        exit 1
-    fi
+    require_docker_running
 }
 
 # Verificar se o Docker está rodando
