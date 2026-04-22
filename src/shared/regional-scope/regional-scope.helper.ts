@@ -42,7 +42,15 @@ export function construirClausulaAndEscopoRegional(
       return { location: { regionalId: user.regionalId } };
 
     case 'WorkOrder':
-      return null;
+      if (user.regionalId) {
+        return {
+          OR: [
+            { location: { regionalId: user.regionalId } },
+            { assignees: { some: { userId: user.id } } },
+          ],
+        };
+      }
+      return { assignees: { some: { userId: user.id } } };
 
     case 'User':
       if (!user.regionalId) {
