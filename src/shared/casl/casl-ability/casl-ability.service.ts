@@ -192,10 +192,6 @@ function aplicarRestricoesRegionaisNaoAdmin(user: User, { cannot }: any) {
     companyId: c,
     NOT: { location: { regionalId: r } },
   });
-  cannot('read', 'WorkOrder', {
-    companyId: c,
-    NOT: { asset: { location: { regionalId: r } } },
-  });
 
   for (const action of ['create', 'update', 'delete'] as const) {
     cannot(action, 'Regional', { companyId: c, NOT: { id: r } });
@@ -203,10 +199,6 @@ function aplicarRestricoesRegionaisNaoAdmin(user: User, { cannot }: any) {
     cannot(action, 'Asset', {
       companyId: c,
       NOT: { location: { regionalId: r } },
-    });
-    cannot(action, 'WorkOrder', {
-      companyId: c,
-      NOT: { asset: { location: { regionalId: r } } },
     });
   }
 

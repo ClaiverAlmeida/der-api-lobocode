@@ -1,9 +1,12 @@
 import {
+  ArrayUnique,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsDateString,
+  IsArray,
 } from 'class-validator';
 import {
   WorkOrderPriority,
@@ -18,9 +21,6 @@ export class CreateWorkOrderDto {
   @IsOptional()
   @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
   companyId?: string;
-
-  @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
-  assetId: string;
 
   @IsString({ message: VALIDATION_MESSAGES.REQUIRED.NAME })
   title: string;
@@ -45,9 +45,19 @@ export class CreateWorkOrderDto {
   })
   type: WorkOrderType;
 
-  @IsOptional()
+  @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
-  assignedToUserId?: string;
+  locationId: string;
+
+  @IsOptional()
+  @IsArray({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @ArrayUnique({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @IsCUID({
+    each: true,
+    message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID,
+  })
+  assignedToUserIds?: string[];
 
   @IsOptional()
   @IsDateString({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })

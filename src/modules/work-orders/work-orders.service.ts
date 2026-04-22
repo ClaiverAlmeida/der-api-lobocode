@@ -11,7 +11,6 @@ import { REQUEST } from '@nestjs/core';
 import {
   FileType,
   Prisma,
-  RegionalStatus,
   Roles,
   UserStatus,
   WorkOrderSlaStatus,
@@ -41,22 +40,30 @@ export class WorkOrdersService extends UniversalService<
   UpdateWorkOrderDto
 > {
   private static readonly entityConfig = createEntityConfig('workOrder');
-  private readonly detalhesInclude: Prisma.WorkOrderInclude = {
-    asset: {
-      select: {
-        id: true,
-        name: true,
-        location: true,
-        km: true,
-        direction: true,
-        status: true,
+  private pendingCreateAssigneeIds: string[] = [];
+  private pendingUpdateAssigneeIds: string[] | null = null;
+
+  private readonly detalhesInclude: any = {
+    location: {
+      include: {
+        regional: {
+          select: {
+            id: true,
+            name: true,
+            region: true,
+          },
+        },
       },
     },
-    assignedToUser: {
-      select: {
-        id: true,
-        name: true,
-        role: true,
+    assignees: {
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
+          },
+        },
       },
     },
     checklistItems: {
@@ -120,21 +127,26 @@ export class WorkOrdersService extends UniversalService<
     this.entityConfig = {
       ...this.entityConfig,
       includes: {
-        asset: {
-          select: {
-            id: true,
-            name: true,
-            location: true,
-            km: true,
-            direction: true,
-            status: true,
+        location: {
+          include: {
+            regional: {
+              select: {
+                id: true,
+                name: true,
+                region: true,
+              },
+            },
           },
         },
-        assignedToUser: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+              },
+            },
           },
         },
       },
@@ -155,9 +167,32 @@ export class WorkOrdersService extends UniversalService<
     return this.buscarPorId(id, this.detalhesInclude);
   }
 
+  async buscarPorLocalidade(locationId: string) {
+    await this.buscarLocalidadeValida(locationId);
+    return this.buscarMuitosPorCampo('locationId', locationId);
+  }
+
   async atribuirResponsavel(id: string, dto: AssignWorkOrderDto) {
     const ordem = await this.buscarOrdemPorId(id);
-    const responsavel = await this.buscarResponsavelValido(dto.assignedToUserId);
+
+    const userId = dto.assignedToUserIds?.[0];
+    if (!userId) {
+      throw new BadRequestException('Informe ao menos um responsável.');
+    }
+    const responsavel = await this.buscarResponsavelValido(userId);
+
+    const jaExiste = ordem.assignees.some(
+      (assignee) => assignee.userId === responsavel.id,
+    );
+    if (!jaExiste) {
+      await this.prisma.workOrderAssignee.create({
+        data: {
+          workOrderId: ordem.id,
+          userId: responsavel.id,
+        },
+      });
+    }
+
     const status = ordem.status === WorkOrderStatus.COMPLETED
       ? WorkOrderStatus.COMPLETED
       : WorkOrderStatus.ASSIGNED;
@@ -165,7 +200,6 @@ export class WorkOrdersService extends UniversalService<
     await this.prisma.workOrder.update({
       where: { id: ordem.id },
       data: {
-        assignedToUserId: responsavel.id,
         status,
         updatedBy: this.obterUsuarioLogadoId() ?? undefined,
         slaStatus: this.calcularSlaStatus(ordem.dueDate, status),
@@ -174,7 +208,45 @@ export class WorkOrdersService extends UniversalService<
 
     await this.registrarComentarioAutomatico(
       ordem.id,
-      `OS atribuída para ${responsavel.name}.`,
+      jaExiste
+        ? `Responsável ${responsavel.name} já estava vinculado à OS.`
+        : `Responsável ${responsavel.name} adicionado à OS.`,
+    );
+
+    return this.buscarDetalhesPorId(ordem.id);
+  }
+
+  async removerResponsavel(id: string, userId: string) {
+    const ordem = await this.buscarOrdemPorId(id);
+
+    const existente = ordem.assignees.find((assignee) => assignee.userId === userId);
+    if (!existente) {
+      throw new NotFoundException('Responsável não encontrado na OS.');
+    }
+
+    await this.prisma.workOrderAssignee.delete({
+      where: { id: existente.id },
+    });
+
+    const restantes = ordem.assignees.filter((assignee) => assignee.userId !== userId);
+    const nextStatus =
+      restantes.length === 0 && ordem.status === WorkOrderStatus.ASSIGNED
+        ? WorkOrderStatus.PENDING
+        : ordem.status;
+
+    await this.prisma.workOrder.update({
+      where: { id: ordem.id },
+      data: {
+        status: nextStatus,
+        updatedBy: this.obterUsuarioLogadoId() ?? undefined,
+        slaStatus: this.calcularSlaStatus(ordem.dueDate, nextStatus),
+      },
+    });
+
+    const nome = existente.user?.name ?? 'Responsável';
+    await this.registrarComentarioAutomatico(
+      ordem.id,
+      `Responsável ${nome} removido da OS.`,
     );
 
     return this.buscarDetalhesPorId(ordem.id);
@@ -183,7 +255,7 @@ export class WorkOrdersService extends UniversalService<
   async iniciarTrabalho(id: string) {
     const ordem = await this.buscarOrdemPorId(id);
 
-    if (!ordem.assignedToUserId) {
+    if (ordem.assignees.length === 0) {
       throw new BadRequestException(
         'A ordem de serviço precisa ter um responsável antes de iniciar.',
       );
@@ -321,9 +393,14 @@ export class WorkOrdersService extends UniversalService<
   }
 
   protected async antesDeCriar(data: CreateWorkOrderDto): Promise<void> {
-    await this.validarAtivoELocalidadeAtivaParaOs(data.assetId);
+    await this.buscarLocalidadeValida(data.locationId);
 
-    if (data.assignedToUserId && !data.status) {
+    const responsaveis = await this.resolverResponsaveisDoPayload(data);
+    this.pendingCreateAssigneeIds = responsaveis.map((responsavel) => responsavel.id);
+
+    delete (data as any).assignedToUserIds;
+
+    if (this.pendingCreateAssigneeIds.length > 0 && !data.status) {
       data.status = WorkOrderStatus.ASSIGNED;
     }
 
@@ -341,63 +418,45 @@ export class WorkOrdersService extends UniversalService<
     );
   }
 
-  /**
-   * Garante que o ativo existe, não está deletado, pertence ao tenant e está
-   * vinculado a uma localidade ativa (coerente com a listagem por localidade).
-   */
-  private async validarAtivoELocalidadeAtivaParaOs(assetId: string): Promise<void> {
-    const companyId = this.obterCompanyId();
-
-    /** Usa o repositório universal (mesmo Prisma dos outros módulos) para evitar
-     * `this.prisma.asset` indefinido quando a injeção do `PrismaService` na subclasse falha. */
-    const asset = await this.repository.buscarPrimeiro('asset', {
-      id: assetId,
-      deletedAt: null,
-      ...(companyId && { companyId }),
-    });
-
-    if (!asset?.locationId) {
-      throw new NotFoundException('Ativo não encontrado ou indisponível.');
-    }
-
-    const location = await this.repository.buscarPrimeiro('location', {
-      id: asset.locationId,
-      status: RegionalStatus.ACTIVE,
-      deletedAt: null,
-      ...(companyId && { companyId }),
-    });
-
-    if (!location) {
-      throw new BadRequestException(
-        'O ativo não está vinculado a uma localidade ativa.',
-      );
-    }
-  }
-
   protected async antesDeAtualizar(
     _id: string,
     data: UpdateWorkOrderDto,
   ): Promise<void> {
-    if (data.assetId) {
-      await this.validarAtivoELocalidadeAtivaParaOs(data.assetId);
+    this.pendingUpdateAssigneeIds = null;
+
+    if (data.locationId) {
+      await this.buscarLocalidadeValida(data.locationId);
     }
 
-    if (data.assignedToUserId) {
-      const responsavel = await this.buscarResponsavelValido(
-        data.assignedToUserId,
+    const payloadPossuiLista = Object.prototype.hasOwnProperty.call(
+      data as object,
+      'assignedToUserIds',
+    );
+
+    if (payloadPossuiLista) {
+      const responsaveis = await this.resolverResponsaveisDoPayload(data);
+      this.pendingUpdateAssigneeIds = responsaveis.map(
+        (responsavel) => responsavel.id,
       );
-      data.assignedToUserId = responsavel.id;
-    }
-
-    if (data.assignedToUserId && !data.status) {
-      const companyId = this.obterCompanyId();
-      const ordem = await this.repository.buscarPrimeiro('workOrder', {
-        id: _id,
-        deletedAt: null,
-        ...(companyId && { companyId }),
-      });
-      if (ordem?.status === WorkOrderStatus.PENDING) {
-        data.status = WorkOrderStatus.ASSIGNED;
+      delete (data as any).assignedToUserIds;
+      if (!data.status) {
+        const companyId = this.obterCompanyId();
+        const ordem = await this.repository.buscarPrimeiro('workOrder', {
+          id: _id,
+          deletedAt: null,
+          ...(companyId && { companyId }),
+        });
+        if (
+          ordem?.status === WorkOrderStatus.PENDING &&
+          this.pendingUpdateAssigneeIds.length > 0
+        ) {
+          data.status = WorkOrderStatus.ASSIGNED;
+        } else if (
+          ordem?.status === WorkOrderStatus.ASSIGNED &&
+          this.pendingUpdateAssigneeIds.length === 0
+        ) {
+          data.status = WorkOrderStatus.PENDING;
+        }
       }
     }
 
@@ -414,28 +473,52 @@ export class WorkOrdersService extends UniversalService<
     }
   }
 
+  protected async depoisDeAtualizar(
+    id: string,
+    _data: UpdateWorkOrderDto,
+  ): Promise<void> {
+    if (this.pendingUpdateAssigneeIds === null) {
+      return;
+    }
+
+    await this.sincronizarResponsaveis(id, this.pendingUpdateAssigneeIds);
+
+    this.pendingUpdateAssigneeIds = null;
+  }
+
   protected async depoisDeCriar(data: {
     id: string;
     type: WorkOrderType;
-    assignedToUser?: { name: string | null } | null;
   }): Promise<void> {
     try {
+      await this.sincronizarResponsaveis(data.id, this.pendingCreateAssigneeIds);
       await this.criarChecklistPadrao(data.id, data.type);
       await this.registrarComentarioAutomatico(data.id, 'OS criada.');
 
-      if (data.assignedToUser?.name) {
+      if (this.pendingCreateAssigneeIds.length > 0) {
+        const responsaveis = await this.prisma.user.findMany({
+          where: { id: { in: this.pendingCreateAssigneeIds } },
+          select: { name: true },
+        });
+        const nomes = responsaveis
+          .map((responsavel) => responsavel.name)
+          .filter(Boolean)
+          .join(', ');
+
         await this.registrarComentarioAutomatico(
           data.id,
-          `OS atribuída para ${data.assignedToUser.name}.`,
+          `OS atribuída para: ${nomes}.`,
         );
       }
+
+      this.pendingCreateAssigneeIds = [];
     } catch (error) {
       console.error(
         '[WorkOrdersService] depoisDeCriar falhou',
         JSON.stringify({
           workOrderId: data.id,
           workOrderType: data.type,
-          assignedToUserName: data.assignedToUser?.name ?? null,
+          assignedToUserIds: this.pendingCreateAssigneeIds,
         }),
         error,
       );
@@ -459,18 +542,15 @@ export class WorkOrdersService extends UniversalService<
     const ordem = await this.prisma.workOrder.findFirst({
       where: whereClause,
       include: {
-        assignedToUser: {
-          select: {
-            id: true,
-            name: true,
-            role: true,
-          },
-        },
-        asset: {
-          select: {
-            id: true,
-            name: true,
-            location: true,
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                role: true,
+              },
+            },
           },
         },
       },
@@ -505,6 +585,59 @@ export class WorkOrdersService extends UniversalService<
     return responsavel;
   }
 
+  private async buscarLocalidadeValida(locationId: string) {
+    const companyId = this.obterCompanyId();
+    const location = await this.repository.buscarPrimeiro('location', {
+      id: locationId,
+      deletedAt: null,
+      ...(companyId && { companyId }),
+    });
+
+    if (!location) {
+      throw new NotFoundException('Localidade não encontrada.');
+    }
+
+    return location;
+  }
+
+  private async resolverResponsaveisDoPayload(
+    data: Pick<CreateWorkOrderDto, 'assignedToUserIds'>,
+  ) {
+    const ids = Array.from(
+      new Set(
+        [...(data.assignedToUserIds ?? [])]
+          .filter(Boolean)
+          .map((value) => String(value).trim()),
+      ),
+    ).filter(Boolean);
+
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const responsaveis = await Promise.all(
+      ids.map((userId) => this.buscarResponsavelValido(userId)),
+    );
+
+    return responsaveis;
+  }
+
+  private async sincronizarResponsaveis(workOrderId: string, userIds: string[]) {
+    await this.prisma.workOrderAssignee.deleteMany({
+      where: { workOrderId },
+    });
+
+    if (userIds.length > 0) {
+      await this.prisma.workOrderAssignee.createMany({
+        data: userIds.map((userId) => ({
+          workOrderId,
+          userId,
+        })),
+      });
+    }
+
+  }
+
   private async criarChecklistPadrao(id: string, type: WorkOrderType) {
     const labels = this.obterChecklistPadraoPorTipo(type);
 
@@ -529,8 +662,8 @@ export class WorkOrdersService extends UniversalService<
   private obterChecklistPadraoPorTipo(type: WorkOrderType): string[] {
     if (type === WorkOrderType.PREVENTIVE) {
       return [
-        'Validar alimentação elétrica do ativo',
-        'Inspecionar estrutura física e fixação',
+        'Validar alimentação elétrica do ponto de intervenção',
+        'Inspecionar estrutura física e fixação do local',
         'Limpar lente e gabinete',
         'Executar teste funcional',
       ];
@@ -539,14 +672,14 @@ export class WorkOrdersService extends UniversalService<
     if (type === WorkOrderType.EMERGENCY) {
       return [
         'Identificar causa raiz da falha',
-        'Restabelecer comunicação do ativo',
+        'Restabelecer comunicação do ponto afetado',
         'Validar transmissão de dados',
         'Registrar evidências da intervenção',
       ];
     }
 
     return [
-      'Inspecionar ativo em campo',
+      'Inspecionar ponto de intervenção em campo',
       'Executar correção necessária',
       'Validar retorno da operação',
       'Registrar observações finais',

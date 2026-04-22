@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  Get,
   MaxFileSizeValidator,
   Param,
   Patch,
   Post,
   Query,
+  Delete,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -51,12 +53,25 @@ export class WorkOrdersController extends UniversalController<
     super(service);
   }
 
+  @Get('location/:locationId')
+  async buscarPorLocalidade(@Param('locationId') locationId: string) {
+    return this.service.buscarPorLocalidade(locationId);
+  }
+
   @Patch(':id/assign')
   async atribuirResponsavel(
     @Param('id') id: string,
     @Body() body: AssignWorkOrderDto,
   ) {
     return this.service.atribuirResponsavel(id, body);
+  }
+
+  @Delete(':id/assignees/:userId')
+  async removerResponsavel(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.service.removerResponsavel(id, userId);
   }
 
   @Patch(':id/start')

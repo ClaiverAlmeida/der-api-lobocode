@@ -1,10 +1,18 @@
-import { IsNotEmpty, IsString } from 'class-validator';
-import { VALIDATION_MESSAGES } from 'src/shared/common/messages';
 import { IsCUID } from 'src/shared/validators';
+import {
+  ArrayUnique,
+  IsArray,
+  IsOptional,
+} from 'class-validator';
+import { VALIDATION_MESSAGES } from 'src/shared/common/messages';
 
 export class AssignWorkOrderDto {
-  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
-  @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
-  assignedToUserId: string;
+  @IsOptional()
+  @IsArray({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @ArrayUnique({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @IsCUID({
+    each: true,
+    message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID,
+  })
+  assignedToUserIds?: string[];
 }
