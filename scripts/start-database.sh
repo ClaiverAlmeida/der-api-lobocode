@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Sempre a partir da raiz do repositório (paths do compose relativos a ela)
-cd "$(dirname "$0")/.." || exit 1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
+cd_project_root
+require_docker_running
 
 set -e
 
@@ -11,7 +13,7 @@ COMPOSE_FILE="docker/docker-compose.database.yml"
 echo "🗄️ Iniciando Banco de Dados DEPARTAMENTO ESTADUAL DE RODOVIAS..."
 
 echo "🛑 Parando apenas os serviços deste compose (projeto der-api-lobocode-database)..."
-docker compose -f "$COMPOSE_FILE" down
+compose -f "$COMPOSE_FILE" down
 
 # Migração: instâncias criadas com o projeto Compose antigo (ex.: nome "docker") não entram no
 # "down" do projeto atual; container_name fixo no YAML continua ocupado e o "up" falha.
@@ -20,13 +22,13 @@ echo "🧹 Removendo contentores órfãos deste stack (se existirem): ${DER_DB_C
 docker rm -f "${DER_DB_CONTAINERS[@]}" 2>/dev/null || true
 
 echo "▶️ Iniciando banco de dados..."
-docker compose -f "$COMPOSE_FILE" up -d
+compose -f "$COMPOSE_FILE" up -d
 
 echo "⏳ Aguardando inicialização..."
 sleep 10
 
 echo "📊 Status dos containers:"
-docker compose -f "$COMPOSE_FILE" ps
+compose -f "$COMPOSE_FILE" ps
 
 echo ""
 echo "✅ Banco de dados iniciado!"

@@ -11,6 +11,7 @@ import { REQUEST } from '@nestjs/core';
 import {
   FileType,
   Prisma,
+  RegionalStatus,
   Roles,
   UserStatus,
   WorkOrderSlaStatus,
@@ -45,7 +46,7 @@ export class WorkOrdersService extends UniversalService<
       select: {
         id: true,
         name: true,
-        highway: true,
+        location: true,
         km: true,
         direction: true,
         status: true,
@@ -95,8 +96,8 @@ export class WorkOrdersService extends UniversalService<
     queryService: UniversalQueryService,
     permissionService: UniversalPermissionService,
     metricsService: UniversalMetricsService,
-    private readonly prisma: PrismaService,
-    private readonly filesService: FilesService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(FilesService) private readonly filesService: FilesService,
     @Optional() @Inject(REQUEST) request: any,
   ) {
     const { model, casl } = WorkOrdersService.entityConfig;
@@ -123,7 +124,7 @@ export class WorkOrdersService extends UniversalService<
           select: {
             id: true,
             name: true,
-            highway: true,
+            location: true,
             km: true,
             direction: true,
             status: true,
@@ -320,6 +321,8 @@ export class WorkOrdersService extends UniversalService<
   }
 
   protected async antesDeCriar(data: CreateWorkOrderDto): Promise<void> {
+    await this.validarAtivoELocalidadeAtivaParaOs(data.assetId);
+
     if (data.assignedToUserId && !data.status) {
       data.status = WorkOrderStatus.ASSIGNED;
     }
@@ -338,12 +341,64 @@ export class WorkOrdersService extends UniversalService<
     );
   }
 
+  /**
+   * Garante que o ativo existe, não está deletado, pertence ao tenant e está
+   * vinculado a uma localidade ativa (coerente com a listagem por localidade).
+   */
+  private async validarAtivoELocalidadeAtivaParaOs(assetId: string): Promise<void> {
+    const companyId = this.obterCompanyId();
+
+    /** Usa o repositório universal (mesmo Prisma dos outros módulos) para evitar
+     * `this.prisma.asset` indefinido quando a injeção do `PrismaService` na subclasse falha. */
+    const asset = await this.repository.buscarPrimeiro('asset', {
+      id: assetId,
+      deletedAt: null,
+      ...(companyId && { companyId }),
+    });
+
+    if (!asset?.locationId) {
+      throw new NotFoundException('Ativo não encontrado ou indisponível.');
+    }
+
+    const location = await this.repository.buscarPrimeiro('location', {
+      id: asset.locationId,
+      status: RegionalStatus.ACTIVE,
+      deletedAt: null,
+      ...(companyId && { companyId }),
+    });
+
+    if (!location) {
+      throw new BadRequestException(
+        'O ativo não está vinculado a uma localidade ativa.',
+      );
+    }
+  }
+
   protected async antesDeAtualizar(
     _id: string,
     data: UpdateWorkOrderDto,
   ): Promise<void> {
+    if (data.assetId) {
+      await this.validarAtivoELocalidadeAtivaParaOs(data.assetId);
+    }
+
+    if (data.assignedToUserId) {
+      const responsavel = await this.buscarResponsavelValido(
+        data.assignedToUserId,
+      );
+      data.assignedToUserId = responsavel.id;
+    }
+
     if (data.assignedToUserId && !data.status) {
-      data.status = WorkOrderStatus.ASSIGNED;
+      const companyId = this.obterCompanyId();
+      const ordem = await this.repository.buscarPrimeiro('workOrder', {
+        id: _id,
+        deletedAt: null,
+        ...(companyId && { companyId }),
+      });
+      if (ordem?.status === WorkOrderStatus.PENDING) {
+        data.status = WorkOrderStatus.ASSIGNED;
+      }
     }
 
     if (data.status === WorkOrderStatus.COMPLETED) {
@@ -409,6 +464,13 @@ export class WorkOrdersService extends UniversalService<
             id: true,
             name: true,
             role: true,
+          },
+        },
+        asset: {
+          select: {
+            id: true,
+            name: true,
+            location: true,
           },
         },
       },

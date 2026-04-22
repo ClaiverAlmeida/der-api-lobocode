@@ -1,5 +1,10 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
+cd_project_root
+require_docker_running
+
 # Script de backup simples para VPS
 BACKUP_DIR="/home/claiver/projetos/ifraseg-engine/backups"
 DB_NAME="departamento-estadual-rodovias-engine"
@@ -16,7 +21,7 @@ BACKUP_FILE="$BACKUP_DIR/backup_$DATE.sql"
 echo "🗄️ Iniciando backup do banco de dados..."
 
 # Fazer backup (DB está no compose database dedicado)
-docker compose -f docker/docker-compose.database.yml --env-file .env exec -T db pg_dump -U "$DB_USER" "$DB_NAME" > "$BACKUP_FILE"
+compose -f docker/docker-compose.database.yml --env-file .env exec -T db pg_dump -U "$DB_USER" "$DB_NAME" > "$BACKUP_FILE"
 
 # Comprimir backup
 gzip $BACKUP_FILE

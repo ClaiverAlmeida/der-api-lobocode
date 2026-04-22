@@ -33,8 +33,18 @@ import { AuthGuard } from '../../shared/auth/guards/auth.guard';
   cors: {
     origin: [
       'https://api.departamento-estadual-rodovias.com.br',
+      'https://api.departamento-estadual-rodovias.com',
+      'https://der-api.lobocode.com.br',
+      'https://der-app.lobocode.com.br',
       'http://31.97.166.94', // Nginx proxy
+      'https://31.97.166.94',
       'http://localhost:4200',
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'http://localhost:3111',
+      'http://127.0.0.1:3111',
       'http://localhost:42100', // departamento-estadual-rodovias: bloco 42xxx
     ],
     credentials: true,

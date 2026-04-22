@@ -86,6 +86,7 @@ export class OAuthService {
         name,
         email,
         login: novoLogin,
+        password: '',
         role: Roles.INSPETOR_VIA,
         status: UserStatus.PENDING,
         profilePicture: picture,
@@ -119,10 +120,9 @@ export class OAuthService {
     const payload: ITokenPayload = {
       name: user.name,
       email: user.email,
-      rg: user.rg ?? '',
       role: user.role,
       sub: user.id,
-      userPermissions: user.permissions.map((p) => p.permissionType),
+      userPermissions: [],
       permissions: packRules(ability.rules),
     };
 

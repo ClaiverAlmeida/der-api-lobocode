@@ -5,66 +5,22 @@
 export type EntityNameModel =
   | 'user'
   | 'company'
-  | 'post'
-  | 'patrol'
-  | 'checkpoint'
-  | 'vehicle'
-  | 'shift'
-  | 'occurrence'
-  | 'supply'
-  | 'motorizedService'
-  | 'vehicleChecklist'
-  | 'motorcycleChecklist'
-  | 'occurrenceDispatch'
-  | 'doormanChecklist'
-  | 'armamentChecklist'
-  | 'vacationSchedule'
-  | 'termination'
-  | 'disciplinaryWarning'
-  | 'foodBasket'
-  | 'panicEvent'
   // Departamento Estadual Rodovias
-  | 'client'
-  | 'deliveryPrice'
-  | 'productPrice'
-  | 'stock'
-  | 'highway'
+  | 'regional'
+  | 'location'
   | 'asset'
   | 'workOrder'
   | 'appointment'
-  | 'container';
 
 export type EntityNameCasl =
   | 'User'
   | 'Company'
-  | 'Post'
-  | 'Patrol'
-  | 'Checkpoint'
-  | 'Vehicle'
-  | 'Shift'
-  | 'Occurrence'
-  | 'VehicleChecklist'
-  | 'Supply'
-  | 'MotorizedService'
-  | 'MotorcycleChecklist'
-  | 'OccurrenceDispatch'
-  | 'DoormanChecklist'
-  | 'ArmamentChecklist'
-  | 'VacationSchedule'
-  | 'Termination'
-  | 'DisciplinaryWarning'
-  | 'FoodBasket'
-  | 'PanicEvent'
   // Departamento Estadual Rodovias
-  | 'Client'
-  | 'DeliveryPrice'
-  | 'ProductPrice'
-  | 'Stock'
-  | 'Highway'
+  | 'Regional'
+  | 'Location'
   | 'Asset'
   | 'WorkOrder'
   | 'Appointment'
-  | 'Container';
 
 // ============================================================================
 // 🔄 MAPEAMENTO AUTOMÁTICO MODEL ↔ CASL
@@ -77,35 +33,12 @@ export const ENTITY_MAPPING = {
   // Core entities
   user: 'User',
   company: 'Company',
-  post: 'Post',
-  patrol: 'Patrol',
-  checkpoint: 'Checkpoint',
-  // Operational entities
-  vehicle: 'Vehicle',
-  shift: 'Shift',
-  occurrence: 'Occurrence',
-  motorizedService: 'MotorizedService',
-  supply: 'Supply',
-  vehicleChecklist: 'VehicleChecklist',
-  motorcycleChecklist: 'MotorcycleChecklist',
-  occurrenceDispatch: 'OccurrenceDispatch',
-  doormanChecklist: 'DoormanChecklist',
-  armamentChecklist: 'ArmamentChecklist',
-  vacationSchedule: 'VacationSchedule',
-  termination: 'Termination',
-  disciplinaryWarning: 'DisciplinaryWarning',
-  foodBasket: 'FoodBasket',
-  panicEvent: 'PanicEvent',
   // Departamento Estadual Rodovias
-  client: 'Client',
-  deliveryPrice: 'DeliveryPrice',
-  productPrice: 'ProductPrice',
-  stock: 'Stock',
-  highway: 'Highway',
+  regional: 'Regional',
+  location: 'Location',
   asset: 'Asset',
   workOrder: 'WorkOrder',
   appointment: 'Appointment',
-  container: 'Container',
 } as const;
 
 /**
@@ -114,34 +47,12 @@ export const ENTITY_MAPPING = {
 export const CASL_TO_MODEL_MAPPING = {
   User: 'user',
   Company: 'company',
-  Post: 'post',
-  Patrol: 'patrol',
-  Checkpoint: 'checkpoint',
-  Vehicle: 'vehicle',
-  Shift: 'shift',
-  Occurrence: 'occurrence',
-  MotorizedService: 'motorizedService',
-  Supply: 'supply',
-  VehicleChecklist: 'vehicleChecklist',
-  MotorcycleChecklist: 'motorcycleChecklist',
-  OccurrenceDispatch: 'occurrenceDispatch',
-  DoormanChecklist: 'doormanChecklist',
-  ArmamentChecklist: 'armamentChecklist',
-  VacationSchedule: 'vacationSchedule',
-  Termination: 'termination',
-  DisciplinaryWarning: 'disciplinaryWarning',
-  FoodBasket: 'foodBasket',
-  PanicEvent: 'panicEvent',
   // Departamento Estadual Rodovias
-  Client: 'client',
-  DeliveryPrice: 'deliveryPrice',
-  ProductPrice: 'productPrice',
-  Stock: 'stock',
-  Highway: 'highway',
+  Regional: 'regional',
+  Location: 'location',
   Asset: 'asset',
   WorkOrder: 'workOrder',
   Appointment: 'appointment',
-  Container: 'container',
 } as const;
 
 // ============================================================================

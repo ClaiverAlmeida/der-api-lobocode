@@ -49,17 +49,12 @@ import {
 import { FilesModule } from './shared/files/files.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { NotificationModule } from './modules/notifications/notification.module';
-import { ClientsModule } from './modules/clients/clients.module';
-import { PricesModule } from './modules/prices/prices.module';
-import { StockModule } from './modules/stock/stock.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
-import { ContainersModule } from './modules/containers/containers.module';
-import { HRModule } from './modules/hr/hr.module';
 import { AssetsModule } from './modules/assets/assets.module';
-import { HighwaysModule } from './modules/highways/highways.module';
+import { RegionalsModule } from './modules/regionals/regionals.module';
+import { LocationsModule } from './modules/locations/locations.module';
 import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
 import { OperationalDashboardModule } from './modules/operational-dashboard/operational-dashboard.module';
-// import { PanicEventsModule } from './modules/panic-events/panic-events.module';
 
 //javascript es7
 
@@ -79,24 +74,14 @@ import { OperationalDashboardModule } from './modules/operational-dashboard/oper
     PrometheusModule.register(),
     AuthModule,
     UsersModule,
-    // VehiclesModule,
     CompaniesModule,
-    // ShiftsModule,
-    // PostsModule,
-    // PatrolsModule,
-    // ReportsModule,
     FilesModule,
     DocumentsModule,
     NotificationModule,
-    // PanicEventsModule,
-    ClientsModule,
-    PricesModule,
-    StockModule,
     AppointmentsModule,
-    ContainersModule,
-    HRModule,
     AssetsModule,
-    HighwaysModule,
+    RegionalsModule,
+    LocationsModule,
     WorkOrdersModule,
     OperationalDashboardModule,
   ],

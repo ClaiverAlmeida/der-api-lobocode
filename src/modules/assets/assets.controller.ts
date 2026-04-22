@@ -32,11 +32,11 @@ export class AssetsController extends UniversalController<
   }
 
   /**
-   * Lista todos os ativos vinculados a uma rodovia pelo nome exato
+   * Lista todos os ativos vinculados a uma localidade pelo nome exato
    */
-  @Get('highway/:highway')
-  async buscarPorRodovia(@Param('highway') highway: string) {
-    return this.service.buscarMuitosPorRodoviaAtiva(highway);
+  @Get('location/:locationId')
+  async buscarPorRodovia(@Param('locationId') locationId: string) {
+    return this.service.buscarMuitosPorRodoviaAtiva(locationId);
   }
 
   /**

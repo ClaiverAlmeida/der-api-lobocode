@@ -85,7 +85,11 @@ export class OperationalDashboardService {
           },
         },
         include: {
-          asset: true,
+          asset: {
+            include: {
+              location: true,
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -110,7 +114,11 @@ export class OperationalDashboardService {
             select: {
               id: true,
               name: true,
-              highway: true,
+              location: {
+                select: {
+                  name: true,
+                },
+              },
               km: true,
             },
           },
@@ -156,7 +164,7 @@ export class OperationalDashboardService {
     const criticalIncidents = recentCriticalWorkOrders.map((wo) => ({
       id: wo.id,
       asset: wo.asset?.name ?? 'Ativo',
-      rodovia: wo.asset?.highway ?? 'Rodovia',
+      rodovia: wo.asset?.location?.name ?? 'Localidade',
       km: wo.asset?.km ?? 0,
       issue: wo.title,
       severity:
@@ -176,7 +184,7 @@ export class OperationalDashboardService {
         ? {
             id: order.asset.id,
             name: order.asset.name,
-            highway: order.asset.highway,
+            location: order.asset.location?.name ?? null,
             km: order.asset.km,
           }
         : null,

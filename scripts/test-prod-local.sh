@@ -1,5 +1,12 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
+cd_project_root
+require_docker_running
+require_command curl
+require_command openssl
+
 echo "🧪 Testando configuração de produção localmente"
 
 # Verificar se está no diretório correto
@@ -10,7 +17,7 @@ fi
 
 # Parar containers existentes
 echo "🛑 Parando containers existentes..."
-docker compose -f docker/docker-compose.prod.yml down 2>/dev/null
+compose -f docker/docker-compose.prod.yml down 2>/dev/null
 
 # Criar diretórios necessários
 echo "📁 Criando diretórios..."
@@ -27,7 +34,7 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
 
 # Construir e iniciar containers
 echo "🔨 Construindo e iniciando containers..."
-docker compose -f docker/docker-compose.prod.yml up -d --build
+compose -f docker/docker-compose.prod.yml up -d --build
 
 # Aguardar banco estar pronto
 echo "⏳ Aguardando banco de dados..."
@@ -35,7 +42,7 @@ sleep 15
 
 # Aplicar migrations
 echo "📦 Aplicando migrations..."
-docker compose -f docker/docker-compose.prod.yml exec -T backend npx prisma migrate deploy
+compose -f docker/docker-compose.prod.yml exec -T backend npx prisma migrate deploy
 
 # Aguardar inicialização
 echo "⏳ Aguardando inicialização (30s)..."
@@ -43,7 +50,7 @@ sleep 30
 
 # Verificar status dos containers
 echo "📊 Status dos containers:"
-docker compose -f docker/docker-compose.prod.yml ps
+compose -f docker/docker-compose.prod.yml ps
 
 # Testar health check
 echo "🏥 Testando health check..."
@@ -57,7 +64,7 @@ curl -k -f https://localhost/health && echo "✅ API OK" || echo "❌ API falhou
 
 # Verificar logs
 echo "📋 Últimos logs do backend:"
-docker compose -f docker/docker-compose.prod.yml logs --tail=10 backend
+compose -f docker/docker-compose.prod.yml logs --tail=10 backend
 
 echo ""
 echo "🧪 Teste concluído!"

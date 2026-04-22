@@ -18,22 +18,26 @@ export class UserFactory {
   }
 
   private criarUsuarioBase(dto: any, role: Roles): Prisma.UserCreateInput {
+    const regionalId =
+      typeof dto.regionalId === 'string' && dto.regionalId.trim()
+        ? dto.regionalId.trim()
+        : undefined;
+
     return {
       name: dto.name,
       login: dto.login.trim().toLowerCase(),
       email: dto.email.trim().toLowerCase(),
-      registration: dto?.registration,
-      cpf: dto?.cpf,
-      rg: dto?.rg,
       phone: dto?.phone,
-      address: dto?.address,
       profilePicture: dto?.profilePicture,
       status: dto?.status,
       password: this.criptografarPassword(dto.password),
       role: role,
-      company: dto.companyId ? {
-        connect: { id: dto.companyId },
-      } : undefined,
+      company: dto.companyId
+        ? {
+            connect: { id: dto.companyId },
+          }
+        : undefined,
+      regional: regionalId ? { connect: { id: regionalId } } : undefined,
     };
   }
 

@@ -179,9 +179,9 @@ export class BaseUserService {
     if (updateData.login) {
       await this.validarSeLoginEhUnico(updateData.login, id);
     }
-    if (updateData.cpf) {
-      await this.validarSeCPFEhUnico(updateData.cpf, id);
-    }
+    // if (updateData.cpf) {
+    //   await this.validarSeCPFEhUnico(updateData.cpf, id);
+    // }
     if (updateData.phone) {
       await this.validarSePhoneEhUnico(updateData.phone, id);
     }
@@ -338,9 +338,9 @@ export class BaseUserService {
   /**
    * Valida se CPF é único
    */
-  protected async validarSeCPFEhUnico(cpf: string, excludeUserId?: string) {
-    return this.userValidator.validarSeCPFEhUnico(cpf, excludeUserId);
-  }
+  // protected async validarSeCPFEhUnico(cpf: string, excludeUserId?: string) {
+  //   return this.userValidator.validarSeCPFEhUnico(cpf, excludeUserId);
+  // }
 
   /**
    * Valida formato do telefone único

@@ -1,9 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "🚀 Deploy Backend Apenas - DEPARTAMENTO ESTADUAL DE RODOVIAS"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
+cd_project_root
+require_docker_running
+require_command curl
 
-cd "$(dirname "$0")/.." || exit 1
+echo "🚀 Deploy Backend Apenas - DEPARTAMENTO ESTADUAL DE RODOVIAS"
 
 COMPOSE="docker/docker-compose.prod.yml"
 BACKEND="departamento-estadual-rodovias-backend"
@@ -18,9 +22,7 @@ if [ ! -f ".env" ]; then
 fi
 
 echo "🔧 Verificando rede app-net-departamento-estadual-rodovias..."
-if ! docker network ls | grep -q "app-net-departamento-estadual-rodovias"; then
-    docker network create --driver bridge app-net-departamento-estadual-rodovias
-fi
+ensure_network "app-net-departamento-estadual-rodovias" "bridge"
 
 echo "🔍 Verificando infraestrutura..."
 if ! docker ps --format '{{.Names}}' | grep -q '^departamento-estadual-rodovias-db$'; then
@@ -37,13 +39,13 @@ echo "🛑 Limpando backend antigo (se existir)..."
 docker rm -f "$BACKEND" 2>/dev/null || true
 
 echo "🔨 Reconstruindo backend..."
-docker compose --env-file .env -f "$COMPOSE" up -d --build backend
+compose --env-file .env -f "$COMPOSE" up -d --build backend
 
 echo "⏳ Aguardando inicialização..."
 sleep 15
 
 echo "📊 Status do backend:"
-docker compose --env-file .env -f "$COMPOSE" ps backend
+compose --env-file .env -f "$COMPOSE" ps backend
 
 echo "🏥 Testando health check local..."
 for i in $(seq 1 30); do
@@ -56,5 +58,5 @@ for i in $(seq 1 30); do
 done
 
 echo "❌ Backend falhou"
-docker compose --env-file .env -f "$COMPOSE" logs --tail=120 backend || true
+compose --env-file .env -f "$COMPOSE" logs --tail=120 backend || true
 exit 1

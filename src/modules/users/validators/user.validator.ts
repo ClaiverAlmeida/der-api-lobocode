@@ -21,15 +21,15 @@ export class UserValidator {
     }
   }
 
-  async validarSeCPFEhUnico(cpf: string, excludeUserId?: string) {
-    if (!cpf) return; // CPF é opcional
+  // async validarSeCPFEhUnico(cpf: string, excludeUserId?: string) {
+  //   if (!cpf) return; // CPF é opcional
 
-    // Verifica se CPF já existe
-    const user = await this.userRepository.buscarPrimeiro({ cpf });
-    if (user && user.id !== excludeUserId) {
-      throw new ConflictError('CPF já está em uso');
-    }
-  }
+  //   // Verifica se CPF já existe
+  //   const user = await this.userRepository.buscarPrimeiro({ cpf });
+  //   if (user && user.id !== excludeUserId) {
+  //     throw new ConflictError('CPF já está em uso');
+  //   }
+  // }
 
   async validarSePhoneEhUnico(phone: string, excludeUserId?: string) {
     if (!phone) return; // Telefone é opcional

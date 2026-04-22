@@ -1,13 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Scope } from '@nestjs/common';
 import { CaslAbilityService } from '../../../shared/casl/casl-ability/casl-ability.service';
 import { TenantService } from '../../../shared/tenant/tenant.service';
 import { accessibleBy } from '@casl/prisma';
-import { Prisma, Roles } from '@prisma/client';
-import { ForbiddenError } from 'src/shared/common/errors';
-import { ERROR_MESSAGES } from 'src/shared/common/messages';
+import { Prisma } from '@prisma/client';
 import { CrudAction } from '../../../shared/common/types';
+import { construirClausulaAndEscopoRegional } from '../../../shared/regional-scope/regional-scope.helper';
 
-@Injectable()
+@Injectable({ scope: Scope.REQUEST })
 export class UserQueryService {
   constructor(
     private abilityService: CaslAbilityService,
@@ -64,9 +63,16 @@ export class UserQueryService {
     const ability = this.abilityService.ability;
     const tenant = this.tenantService.getTenant();
 
+    const andParts: Prisma.UserWhereInput[] = [accessibleBy(ability, action).User];
+    const usuario = this.abilityService.obterUsuarioAtivo();
+    const escopoRegional = construirClausulaAndEscopoRegional('User', usuario);
+    if (escopoRegional) {
+      andParts.push(escopoRegional as Prisma.UserWhereInput);
+    }
+
     const whereClause: Prisma.UserWhereInput = {
       ...additionalWhere,
-      AND: [accessibleBy(ability, action).User],
+      AND: andParts,
       deletedAt: null,
     };
 

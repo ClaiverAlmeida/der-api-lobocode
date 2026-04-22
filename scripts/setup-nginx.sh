@@ -1,5 +1,12 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/common.sh"
+cd_project_root
+require_docker_running
+require_command curl
+require_command openssl
+
 echo "🔧 Configurando Nginx para DEPARTAMENTO ESTADUAL DE RODOVIAS..."
 
 # Verificar se está no diretório correto
@@ -27,21 +34,20 @@ fi
 
 # Verificar se a rede app-net-departamento-estadual-rodovias existe
 echo "🔗 Verificando rede app-net-departamento-estadual-rodovias..."
-if ! docker network ls | grep -q "app-net-departamento-estadual-rodovias"; then
-    echo "📡 Criando rede app-net-departamento-estadual-rodovias..."
-    docker network create --driver bridge app-net-departamento-estadual-rodovias
-    echo "✅ Rede app-net-departamento-estadual-rodovias criada!"
-else
+if network_exists "app-net-departamento-estadual-rodovias"; then
     echo "✅ Rede app-net-departamento-estadual-rodovias já existe"
+else
+    echo "📡 Criando rede app-net-departamento-estadual-rodovias..."
+    ensure_network "app-net-departamento-estadual-rodovias" "bridge"
 fi
 
 # Parar containers existentes
 echo "🛑 Parando containers existentes..."
-docker compose -f docker/docker-compose.unified.yml down
+compose -f docker/docker-compose.unified.yml down
 
 # Iniciar todos os serviços
 echo "🚀 Iniciando todos os serviços..."
-docker compose -f docker/docker-compose.unified.yml up -d
+compose -f docker/docker-compose.unified.yml up -d
 
 # Aguardar inicialização
 echo "⏳ Aguardando inicialização dos serviços..."
@@ -49,7 +55,7 @@ sleep 10
 
 # Verificar status
 echo "📊 Status dos serviços:"
-docker compose -f docker/docker-compose.unified.yml ps
+compose -f docker/docker-compose.unified.yml ps
 
 # Testar conectividade
 echo "🧪 Testando conectividade..."
