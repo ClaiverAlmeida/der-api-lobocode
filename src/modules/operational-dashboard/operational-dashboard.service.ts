@@ -84,12 +84,11 @@ export class OperationalDashboardService {
             in: [WorkOrderPriority.CRITICAL, WorkOrderPriority.HIGH],
           },
         },
-        include: {
-          asset: {
-            include: {
-              location: true,
-            },
-          },
+        select: {
+          id: true,
+          title: true,
+          priority: true,
+          createdAt: true,
         },
         orderBy: { createdAt: 'desc' },
         take: 10,
@@ -110,18 +109,6 @@ export class OperationalDashboardService {
           priority: true,
           status: true,
           dueDate: true,
-          asset: {
-            select: {
-              id: true,
-              name: true,
-              location: {
-                select: {
-                  name: true,
-                },
-              },
-              km: true,
-            },
-          },
         },
         orderBy: [{ dueDate: 'asc' }, { createdAt: 'desc' }],
         take: 5,
@@ -163,9 +150,9 @@ export class OperationalDashboardService {
 
     const criticalIncidents = recentCriticalWorkOrders.map((wo) => ({
       id: wo.id,
-      asset: wo.asset?.name ?? 'Ativo',
-      rodovia: wo.asset?.location?.name ?? 'Localidade',
-      km: wo.asset?.km ?? 0,
+      asset: 'Ordem de serviço',
+      rodovia: 'Não informado',
+      km: 0,
       issue: wo.title,
       severity:
         wo.priority === WorkOrderPriority.CRITICAL ? 'critical' : 'high',
@@ -180,14 +167,6 @@ export class OperationalDashboardService {
       priority: order.priority,
       status: order.status,
       dueDate: order.dueDate?.toISOString() ?? null,
-      asset: order.asset
-        ? {
-            id: order.asset.id,
-            name: order.asset.name,
-            location: order.asset.location?.name ?? null,
-            km: order.asset.km,
-          }
-        : null,
     }));
 
     return {

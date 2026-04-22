@@ -42,12 +42,7 @@ export function construirClausulaAndEscopoRegional(
       return { location: { regionalId: user.regionalId } };
 
     case 'WorkOrder':
-      if (!user.regionalId) {
-        return construirWhereImpossivel();
-      }
-      return {
-        asset: { location: { regionalId: user.regionalId } },
-      };
+      return null;
 
     case 'User':
       if (!user.regionalId) {

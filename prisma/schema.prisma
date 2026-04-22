@@ -207,8 +207,8 @@ model User {
   notifications      NotificationRecipient[]   @relation("UserNotifications")
   groupMemberships   NotificationGroupMember[] @relation("UserGroupMemberships")
   pushSubscriptions  PushSubscription[]        @relation("UserPushSubscriptions")
-  assignedWorkOrders WorkOrder[]               @relation("WorkOrderAssignee")
   workOrderComments  WorkOrderComment[]        @relation("WorkOrderCommentsAuthor")
+  assignees          WorkOrderAssignee[]       @relation("UserWorkOrderAssignee")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -281,8 +281,7 @@ model Asset {
   locationId String
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
-  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  workOrders WorkOrder[]
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -340,6 +339,7 @@ model Location {
   regional   Regional @relation(fields: [regionalId], references: [id], onDelete: Cascade)
 
   assets Asset[]
+  workOrders WorkOrder[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -351,6 +351,19 @@ model Location {
   @@index([deletedAt])
 }
 
+model WorkOrderAssignee {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation("UserWorkOrderAssignee", fields: [userId], references: [id], onDelete: Cascade)
+  workOrderId String
+  workOrder   WorkOrder @relation("WorkOrderAssignees", fields: [workOrderId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([workOrderId, userId])
+  @@index([userId])
+  @@index([workOrderId])
+}
+
 // ===============================================
 // ORDENS DE SERVIÇO (manutenção de ativos)
 // ===============================================
@@ -358,20 +371,19 @@ model Location {
 model WorkOrder {
   id               String              @id @default(cuid())
   companyId        String
-  assetId          String
+  locationId       String
   title            String
   description      String?
   priority         WorkOrderPriority
   status           WorkOrderStatus     @default(PENDING)
   type             WorkOrderType
-  assignedToUserId String?
   dueDate          DateTime?
   slaDeadlineHours Int?
   slaStatus        WorkOrderSlaStatus? @default(OK)
 
-  company        Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  asset          Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  assignedToUser User?   @relation("WorkOrderAssignee", fields: [assignedToUserId], references: [id])
+  company   Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  location  Location            @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  assignees WorkOrderAssignee[] @relation("WorkOrderAssignees")
 
   checklistItems WorkOrderChecklistItem[]
   comments       WorkOrderComment[]
@@ -385,7 +397,7 @@ model WorkOrder {
   updatedBy String?
 
   @@index([companyId])
-  @@index([assetId])
+  @@index([locationId])
   @@index([status])
   @@index([priority])
   @@index([dueDate])
