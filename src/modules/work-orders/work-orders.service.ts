@@ -33,6 +33,7 @@ import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { CreateWorkOrderCommentDto } from './dto/create-work-order-comment.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { UpdateWorkOrderChecklistItemDto } from './dto/update-work-order-checklist-item.dto';
+import { CreateWorkOrderCheckListDto } from './dto/create-work-order-checklist-item.dto';
 
 @Injectable({ scope: Scope.REQUEST })
 export class WorkOrdersService extends UniversalService<
@@ -252,6 +253,29 @@ export class WorkOrdersService extends UniversalService<
     return this.buscarDetalhesPorId(ordem.id);
   }
 
+  async removerItemDoChecklist(id: string, itemId: string) {
+    await this.buscarOrdemPorId(id);
+
+    await this.prisma.$transaction(async (tx) => {
+      const item = await tx.workOrderChecklistItem.findFirst({
+        where: { id: itemId, workOrderId: id },
+        select: { id: true },
+      });
+
+      if (!item) {
+        throw new NotFoundException('Item de checklist não encontrado.');
+      }
+
+      await tx.workOrderChecklistItem.delete({
+        where: { id: item.id },
+      });
+
+      await this.reordenarChecklist(id, tx);
+    });
+
+    return this.buscarDetalhesPorId(id);
+  }
+
   async iniciarTrabalho(id: string) {
     const ordem = await this.buscarOrdemPorId(id);
 
@@ -339,6 +363,58 @@ export class WorkOrdersService extends UniversalService<
     });
 
     return this.buscarDetalhesPorId(id);
+  }
+
+  async criarItemDoChecklist(id: string, dto: CreateWorkOrderCheckListDto) {
+    await this.buscarOrdemPorId(id);
+
+    await this.prisma.$transaction(async (tx) => {
+      const checklistItems = await tx.workOrderChecklistItem.findMany({
+        where: { workOrderId: id },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true },
+      });
+
+      // Reorganiza antes de inserir para evitar buracos em cenários legados.
+      await Promise.all(
+        checklistItems.map((item, index) =>
+          tx.workOrderChecklistItem.update({
+            where: { id: item.id },
+            data: { sortOrder: index + 1 },
+          }),
+        ),
+      );
+
+      await tx.workOrderChecklistItem.create({
+        data: {
+          workOrderId: id,
+          label: dto.label,
+          sortOrder: checklistItems.length + 1,
+        },
+      });
+    });
+
+    return this.buscarDetalhesPorId(id);
+  }
+
+  private async reordenarChecklist(
+    workOrderId: string,
+    tx: Prisma.TransactionClient,
+  ) {
+    const items = await tx.workOrderChecklistItem.findMany({
+      where: { workOrderId },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true },
+    });
+
+    await Promise.all(
+      items.map((item, index) =>
+        tx.workOrderChecklistItem.update({
+          where: { id: item.id },
+          data: { sortOrder: index + 1 },
+        }),
+      ),
+    );
   }
 
   async criarComentario(id: string, dto: CreateWorkOrderCommentDto) {

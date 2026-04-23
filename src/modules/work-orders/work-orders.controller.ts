@@ -28,6 +28,7 @@ import { CreateWorkOrderCommentDto } from './dto/create-work-order-comment.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { UpdateWorkOrderChecklistItemDto } from './dto/update-work-order-checklist-item.dto';
 import { WorkOrdersService } from './work-orders.service';
+import { CreateWorkOrderCheckListDto } from './dto/create-work-order-checklist-item.dto';
 
 @UseGuards(AuthGuard, RoleByMethodGuard)
 @UseInterceptors(TenantInterceptor)
@@ -74,6 +75,14 @@ export class WorkOrdersController extends UniversalController<
     return this.service.removerResponsavel(id, userId);
   }
 
+  @Delete(':id/checklist-items/:itemId')
+  async removerItemDoChecklist(
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+  ) {
+    return this.service.removerItemDoChecklist(id, itemId);
+  }
+
   @Patch(':id/start')
   async iniciarTrabalho(@Param('id') id: string) {
     return this.service.iniciarTrabalho(id);
@@ -94,6 +103,14 @@ export class WorkOrdersController extends UniversalController<
     @Body() body: UpdateWorkOrderChecklistItemDto,
   ) {
     return this.service.atualizarItemDoChecklist(id, itemId, body);
+  }
+
+  @Post(':id/checklist-items')
+  async criarItemDoChecklist(
+    @Param('id') id: string,
+    @Body() body: CreateWorkOrderCheckListDto,
+  ) {
+    return this.service.criarItemDoChecklist(id, body);
   }
 
   @Post(':id/comments')

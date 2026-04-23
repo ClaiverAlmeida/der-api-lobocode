@@ -11,6 +11,7 @@ export type EntityNameModel =
   | 'asset'
   | 'workOrder'
   | 'appointment'
+  | 'workOrderChecklistItem'
 
 export type EntityNameCasl =
   | 'User'
@@ -21,6 +22,7 @@ export type EntityNameCasl =
   | 'Asset'
   | 'WorkOrder'
   | 'Appointment'
+  | 'WorkOrderChecklistItem'
 
 // ============================================================================
 // 🔄 MAPEAMENTO AUTOMÁTICO MODEL ↔ CASL
@@ -39,6 +41,7 @@ export const ENTITY_MAPPING = {
   asset: 'Asset',
   workOrder: 'WorkOrder',
   appointment: 'Appointment',
+  workOrderChecklistItem: 'WorkOrderChecklistItem'
 } as const;
 
 /**
@@ -53,6 +56,7 @@ export const CASL_TO_MODEL_MAPPING = {
   Asset: 'asset',
   WorkOrder: 'workOrder',
   Appointment: 'appointment',
+  WorkOrderChecklistItem: 'workOrderChecklistItem'
 } as const;
 
 // ============================================================================
