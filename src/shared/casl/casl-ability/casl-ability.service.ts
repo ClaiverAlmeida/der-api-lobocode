@@ -185,12 +185,19 @@ function aplicarRestricoesRegionaisNaoAdmin(user: User, { cannot }: any) {
   }
 
   const r = user.regionalId;
+  const workOrderPermitidoForaRegional = {
+    OR: [{ location: { regionalId: r } }, { assignees: { some: { userId: user.id } } }],
+  };
 
   cannot('read', 'Regional', { companyId: c, NOT: { id: r } });
   cannot('read', 'Location', { companyId: c, NOT: { regionalId: r } });
   cannot('read', 'Asset', {
     companyId: c,
     NOT: { location: { regionalId: r } },
+  });
+  cannot('read', 'WorkOrder', {
+    companyId: c,
+    NOT: workOrderPermitidoForaRegional,
   });
 
   for (const action of ['create', 'update', 'delete'] as const) {
@@ -200,6 +207,12 @@ function aplicarRestricoesRegionaisNaoAdmin(user: User, { cannot }: any) {
       companyId: c,
       NOT: { location: { regionalId: r } },
     });
+    if (action !== 'create') {
+      cannot(action, 'WorkOrder', {
+        companyId: c,
+        NOT: workOrderPermitidoForaRegional,
+      });
+    }
   }
 
   cannot('read', 'User', {
@@ -241,7 +254,7 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     operationalPermissions.appointmentManagement(user, { can });
     operationalPermissions.clientManagement(user, { can });
     specificPermissions.notifications(user, { can });
-    specificPermissions.workOrdersRead(user, { can });
+    specificPermissions.workOrdersManage(user, { can });
   },
 
   OPERADOR: (user: User, { can }: any) => {
@@ -259,7 +272,7 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     basicResourcePermissions.readDocuments(user, { can });
     operationalPermissions.appointmentManagement(user, { can });
     specificPermissions.notifications(user, { can });
-    specificPermissions.workOrdersRead(user, { can });
+    specificPermissions.workOrdersManage(user, { can });
   },
 };
 
