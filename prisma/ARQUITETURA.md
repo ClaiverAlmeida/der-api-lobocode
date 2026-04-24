@@ -1,4 +1,4 @@
-# Arquitetura do Sistema de Gestão de Segurança (Departamento Estadual Rodovias)
+# Arquitetura do Sistema de Gestão de Segurança (Departamento de Estradas de Rodagem)
 
 ## Visão Geral
 

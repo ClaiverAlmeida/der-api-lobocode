@@ -55,6 +55,10 @@ export class BaseUserDto {
   status?: UserStatus;
 
   @IsOptional()
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  function?: string;
+
+  @IsOptional()
   @IsArray({ message: VALIDATION_MESSAGES.FORMAT.ARRAY_INVALID })
   @IsEnum(PermissionType, { each: true, message: VALIDATION_MESSAGES.FORMAT.ENUM_INVALID })
   permissions?: PermissionType[];

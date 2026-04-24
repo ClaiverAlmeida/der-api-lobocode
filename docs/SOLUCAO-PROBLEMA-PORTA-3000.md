@@ -1,6 +1,6 @@
 # 🔧 Solução: Exposição da Porta do Backend
 
-> **Departamento Estadual Rodovias:** o projeto usa a **porta 30100** no host (bloco 30xxx, para não conflitar com vários projetos). Nos exemplos abaixo, use `30100` onde aparecer porta do backend.
+> **Departamento de Estradas de Rodagem:** o projeto usa a **porta 30100** no host (bloco 30xxx, para não conflitar com vários projetos). Nos exemplos abaixo, use `30100` onde aparecer porta do backend.
 
 ## ✅ Status Atual
 

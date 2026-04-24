@@ -1,5 +1,5 @@
 ---
-description: 'Regras específicas para desenvolvimento NestJS no projeto Departamento Estadual Rodovias'
+description: 'Regras específicas para desenvolvimento NestJS no projeto Departamento de Estradas de Rodagem'
 globs:
   - 'src/**/*.ts'
   - 'src/**/*.module.ts'
@@ -12,7 +12,7 @@ globs:
 alwaysApply: true
 ---
 
-# 🧱 Regras de Desenvolvimento NestJS - Projeto Departamento Estadual Rodovias
+# 🧱 Regras de Desenvolvimento NestJS - Projeto Departamento de Estradas de Rodagem
 
 > **📘 Complemento**: Este documento trabalha em conjunto com o `docs/NAMING_CONVENTIONS.md` que contém os padrões específicos de nomenclatura do projeto.
 

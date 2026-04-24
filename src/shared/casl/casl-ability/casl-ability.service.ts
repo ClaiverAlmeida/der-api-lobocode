@@ -237,9 +237,8 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     administrativePermissions.companyManage(user, { can });
     administrativePermissions.userManagement(user, { can }, [
       Roles.ADMIN,
-      Roles.FISCAL_CAMPO,
-      Roles.OPERADOR,
-      Roles.INSPETOR_VIA,
+      Roles.FIELD_TEAM,
+      Roles.C2C,
     ]);
     administrativePermissions.resourceManagement(user, { can });
     administrativePermissions.reporting(user, { can });
@@ -247,7 +246,7 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     specificPermissions.workOrdersManage(user, { can });
   },
 
-  FISCAL_CAMPO: (user: User, { can }: any) => {
+  FIELD_TEAM: (user: User, { can }: any) => {
     administrativePermissions.companyRead(user, { can });
     profilePermissions.ownProfileExtended(user, { can });
     basicResourcePermissions.readDocuments(user, { can });
@@ -257,20 +256,12 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     specificPermissions.workOrdersManage(user, { can });
   },
 
-  OPERADOR: (user: User, { can }: any) => {
+  C2C: (user: User, { can }: any) => {
     administrativePermissions.companyRead(user, { can });
     profilePermissions.ownProfileExtended(user, { can });
     basicResourcePermissions.readDocuments(user, { can });
     operationalPermissions.appointmentManagement(user, { can });
     operationalPermissions.clientManagement(user, { can });
-    specificPermissions.notifications(user, { can });
-    specificPermissions.workOrdersManage(user, { can });
-  },
-
-  INSPETOR_VIA: (user: User, { can }: any) => {
-    profilePermissions.ownProfile(user, { can });
-    basicResourcePermissions.readDocuments(user, { can });
-    operationalPermissions.appointmentManagement(user, { can });
     specificPermissions.notifications(user, { can });
     specificPermissions.workOrdersManage(user, { can });
   },
@@ -289,7 +280,7 @@ export class CaslAbilityService {
 
     rolePermissionsMap[user.role](user, builder);
 
-    if (user.role === Roles.INSPETOR_VIA) {
+    if (user.role === Roles.C2C) {
       concederLeituraCadeiaRegionalCampo(user, builder);
     }
 

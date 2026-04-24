@@ -5,8 +5,6 @@ import { UserFactory } from '../factories/user.factory';
 import { UserRepository } from '../repositories/user.repository';
 import { UserValidator } from '../validators/user.validator';
 import { UserQueryService } from './user-query.service';
-import { ForbiddenError } from '../../../shared/common/errors';
-import { ERROR_MESSAGES } from '../../../shared/common/messages';
 import { Roles } from '@prisma/client';
 import { UserPermissionService } from './user-permission.service';
 
@@ -24,13 +22,13 @@ export class SupervisorService extends BaseUserService {
       userValidator,
       userQueryService,
       userPermissionService,
-      Roles.OPERADOR,
+      Roles.C2C,
     );
   }
 
   //  Funcionalidades específicas (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: mapeado para OPERADOR)
   async criarNovoSupervisor(dto: CreateSupervisorDto) {
-    this.userPermissionService.validarCriacaoDeUserComRole(Roles.OPERADOR);
+    this.userPermissionService.validarCriacaoDeUserComRole(Roles.C2C);
 
     // Valida se email é único
     await this.validarSeEmailEhUnico(dto.email);

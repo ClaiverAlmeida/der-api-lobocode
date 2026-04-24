@@ -1,6 +1,6 @@
 # 📁 Módulo de Armazenamento de Arquivos (Simplificado)
 
-Sistema simples de armazenamento de arquivos integrado ao backend NestJS do Departamento Estadual Rodovias Engine, utilizando MinIO como storage.
+Sistema simples de armazenamento de arquivos integrado ao backend NestJS do Departamento de Estradas de Rodagem Engine, utilizando MinIO como storage.
 
 ## 🏗️ Arquitetura Simplificada
 

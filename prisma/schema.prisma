@@ -21,9 +21,8 @@ datasource db {
 enum Roles {
   SYSTEM_ADMIN // Administrador da plataforma
   ADMIN // Admin geral - acesso total
-  FISCAL_CAMPO // Comercial - clientes, agendamentos, atendimentos
-  OPERADOR // Logístico - agendamentos, containers, estoque
-  INSPETOR_VIA // Motorista - ordens de serviço, recibos
+  FIELD_TEAM // Equipe de Campo - Fiscalização e relatórios de localidades (Técnico)
+  C2C // C2C - Centro de Controle e Comando
 }
 
 enum UserStatus {
@@ -51,8 +50,9 @@ enum AppointmentStatus {
 
 enum AssetType {
   CAMERA // Câmera
-  SENSOR // Sensor
-  EQUIPMENT // Outro equipamento de campo
+  ATDB // ATDB
+  TMV // TMV
+  OTHER // Outro
 }
 
 enum AssetConnectionType {
@@ -97,7 +97,7 @@ enum WorkOrderStatus {
 enum WorkOrderType {
   PREVENTIVE
   CORRECTIVE
-  EMERGENCY
+  TECHNICAL_REVIEW
 }
 
 enum WorkOrderSlaStatus {
@@ -188,6 +188,7 @@ model User {
   login          String     @unique
   password       String
   role           Roles
+  function       String?
   profilePicture String?
   status         UserStatus @default(ACTIVE)
   phone          String?
@@ -301,8 +302,8 @@ model Asset {
 
 model Regional {
   id     String         @id @default(cuid())
-  name   String
-  region String
+  sgr    String
+  city   String
   status RegionalStatus @default(ACTIVE)
 
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -316,7 +317,7 @@ model Regional {
   users     User[]
 
   @@index([companyId])
-  @@index([name])
+  @@index([sgr])
   @@index([deletedAt])
 }
 
@@ -394,6 +395,7 @@ model WorkOrder {
   dueDate          DateTime?
   slaDeadlineHours Int?
   slaStatus        WorkOrderSlaStatus? @default(OK)
+  equipmentType    AssetType?
 
   // columnId String
   // column   WorkOrderColumn     @relation(fields: [columnId], references: [id], onDelete: Cascade)

@@ -246,7 +246,7 @@ export const HISTORY_MESSAGES = {
 export const NOTIFICATION_MESSAGES = {
   // Notificações de usuário
   USER: {
-    WELCOME: 'Bem-vindo ao Departamento Estadual Rodovias!',
+    WELCOME: 'Bem-vindo ao Departamento de Estradas de Rodagem!',
     ACCOUNT_CREATED: 'Conta criada com sucesso',
     PROFILE_UPDATED: 'Perfil atualizado',
     PASSWORD_RESET: 'Redefinição de senha solicitada',

@@ -1,8 +1,8 @@
-# Decorators de Validação Customizados - Departamento Estadual Rodovias
+# Decorators de Validação Customizados - Departamento de Estradas de Rodagem
 
 ## 📋 Visão Geral
 
-Este módulo contém decorators customizados para validação de dados específicos do sistema Departamento Estadual Rodovias, seguindo padrões brasileiros e regras de negócio específicas.
+Este módulo contém decorators customizados para validação de dados específicos do sistema Departamento de Estradas de Rodagem, seguindo padrões brasileiros e regras de negócio específicas.
 
 ## 🎯 Decorators Disponíveis
 
@@ -215,7 +215,7 @@ Os decorators são automaticamente aplicados quando o `ValidationPipe` global es
 
 ## 📝 Mensagens de Erro
 
-Todas as mensagens estão em português brasileiro e são específicas para o contexto do Departamento Estadual Rodovias:
+Todas as mensagens estão em português brasileiro e são específicas para o contexto do Departamento de Estradas de Rodagem:
 
 - **Senha fraca**: "A senha deve ter pelo menos 8 caracteres, incluindo uma letra maiúscula, uma minúscula, um número e um caractere especial"
 - **Email duplicado**: "Este email já está cadastrado na empresa"
