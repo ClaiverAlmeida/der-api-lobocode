@@ -59,8 +59,8 @@ export class LocationsService extends UniversalService<
         regional: {
           select: {
             id: true,
-            name: true,
-            region: true,
+            sgr: true,
+            city: true,
           },
         },
       },

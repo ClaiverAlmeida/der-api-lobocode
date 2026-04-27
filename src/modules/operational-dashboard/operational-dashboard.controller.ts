@@ -12,9 +12,8 @@ import { OperationalDashboardService } from './operational-dashboard.service';
   GET: [
     Roles.SYSTEM_ADMIN,
     Roles.ADMIN,
-    Roles.FISCAL_CAMPO,
-    Roles.OPERADOR,
-    Roles.INSPETOR_VIA,
+    Roles.FIELD_TEAM,
+    Roles.C2C,
   ],
 })
 @Controller('dashboard/operational')

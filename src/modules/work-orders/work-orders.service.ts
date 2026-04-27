@@ -50,8 +50,8 @@ export class WorkOrdersService extends UniversalService<
         regional: {
           select: {
             id: true,
-            name: true,
-            region: true,
+            sgr: true,
+            city: true,
           },
         },
       },
@@ -133,8 +133,8 @@ export class WorkOrdersService extends UniversalService<
             regional: {
               select: {
                 id: true,
-                name: true,
-                region: true,
+                sgr: true,
+                city: true,
               },
             },
           },
@@ -568,7 +568,7 @@ export class WorkOrdersService extends UniversalService<
   }): Promise<void> {
     try {
       await this.sincronizarResponsaveis(data.id, this.pendingCreateAssigneeIds);
-      await this.criarChecklistPadrao(data.id, data.type);
+      // await this.criarChecklistPadrao(data.id, data.type);
       await this.registrarComentarioAutomatico(data.id, 'OS criada.');
 
       if (this.pendingCreateAssigneeIds.length > 0) {
@@ -645,7 +645,7 @@ export class WorkOrdersService extends UniversalService<
       where: {
         id: userId,
         status: UserStatus.ACTIVE,
-        role: { in: [Roles.INSPETOR_VIA, Roles.OPERADOR] },
+        role: { in: [Roles.FIELD_TEAM, Roles.C2C] },
         ...(companyId && { companyId }),
       },
       select: {
@@ -714,53 +714,53 @@ export class WorkOrdersService extends UniversalService<
 
   }
 
-  private async criarChecklistPadrao(id: string, type: WorkOrderType) {
-    const labels = this.obterChecklistPadraoPorTipo(type);
+  // private async criarChecklistPadrao(id: string, type: WorkOrderType) {
+    // const labels = this.obterChecklistPadraoPorTipo(type);
 
-    if (labels.length === 0) {
-      return;
-    }
+    // if (labels.length === 0) {
+    //   return;
+    // }
 
-    await this.repository.atualizar(
-      'workOrder',
-      { id },
-      {
-        checklistItems: {
-          create: labels.map((label, index) => ({
-            label,
-            sortOrder: index + 1,
-          })),
-        },
-      } as any,
-    );
-  }
+    // await this.repository.atualizar(
+    //   'workOrder',
+    //   { id },
+    //   {
+    //     checklistItems: {
+    //       create: labels.map((label, index) => ({
+    //         label,
+    //         sortOrder: index + 1,
+    //       })),
+    //     },
+    //   } as any,
+    // );
+  // }
 
-  private obterChecklistPadraoPorTipo(type: WorkOrderType): string[] {
-    if (type === WorkOrderType.PREVENTIVE) {
-      return [
-        'Validar alimentação elétrica do ponto de intervenção',
-        'Inspecionar estrutura física e fixação do local',
-        'Limpar lente e gabinete',
-        'Executar teste funcional',
-      ];
-    }
+  // private obterChecklistPadraoPorTipo(type: WorkOrderType): string[] {
+  //   if (type === WorkOrderType.PREVENTIVE) {
+  //     return [
+  //       'Validar alimentação elétrica do ponto de intervenção',
+  //       'Inspecionar estrutura física e fixação do local',
+  //       'Limpar lente e gabinete',
+  //       'Executar teste funcional',
+  //     ];
+  //   }
 
-    if (type === WorkOrderType.EMERGENCY) {
-      return [
-        'Identificar causa raiz da falha',
-        'Restabelecer comunicação do ponto afetado',
-        'Validar transmissão de dados',
-        'Registrar evidências da intervenção',
-      ];
-    }
+  //   if (type === WorkOrderType.EMERGENCY) {
+  //     return [
+  //       'Identificar causa raiz da falha',
+  //       'Restabelecer comunicação do ponto afetado',
+  //       'Validar transmissão de dados',
+  //       'Registrar evidências da intervenção',
+  //     ];
+  //   }
 
-    return [
-      'Inspecionar ponto de intervenção em campo',
-      'Executar correção necessária',
-      'Validar retorno da operação',
-      'Registrar observações finais',
-    ];
-  }
+  //   return [
+  //     'Inspecionar ponto de intervenção em campo',
+  //     'Executar correção necessária',
+  //     'Validar retorno da operação',
+  //     'Registrar observações finais',
+  //   ];
+  // }
 
   private async registrarComentarioAutomatico(
     workOrderId: string,

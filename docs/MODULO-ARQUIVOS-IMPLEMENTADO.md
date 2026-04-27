@@ -255,7 +255,7 @@ departamento-estadual-rodovias-files/
 
 ## 🎯 **Resultado Final**
 
-O módulo de armazenamento de arquivos está **100% funcional** e integrado ao projeto Departamento Estadual Rodovias Engine, seguindo todos os padrões arquiteturais estabelecidos:
+O módulo de armazenamento de arquivos está **100% funcional** e integrado ao projeto Departamento de Estradas de Rodagem Engine, seguindo todos os padrões arquiteturais estabelecidos:
 
 - **Arquitetura modular** (Repository → Validator → Factory → Service → Controller)
 - **Multi-tenancy** por empresa

@@ -1,4 +1,4 @@
-# Análise completa: Front Departamento Estadual Rodovias (referência) x Backend e Schema
+# Análise completa: Front Departamento de Estradas de Rodagem (referência) x Backend e Schema
 
 **Objetivo:** Alinhar o backend (departamento-estadual-rodovias-api-lobocode) ao front (departamento-estadual-rodoviasmanagementsystem), usando o `schema.departamento-estadual-rodovias.prisma` como base e ajustando conforme a necessidade real de cada componente do front.
 
@@ -8,10 +8,10 @@
 
 | Aspecto            | Front (departamento-estadual-rodoviasmanagementsystem)                                                                                                                                     | Backend atual (departamento-estadual-rodovias-api-lobocode)                                                                                                                     |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Domínio**        | Mudanças internacionais EUA–Brasil (clientes, agendamentos, containers, estoque, financeiro, RH, motorista, leads)                                                                         | Segurança patrimonial (Departamento Estadual Rodovias): turnos, postos, rondas, checkpoints, ocorrências, veículos, panic events, reports (checklists, férias, rescisões, etc.) |
-| **Fonte de dados** | `DataContext` com dados **mock** em memória                                                                                                                                                | Prisma com `schema.prisma` (Departamento Estadual Rodovias)                                                                                                                     |
-| **Auth**           | Integrado com API (login/refresh/logout); roles: admin, comercial, logistico, motorista                                                                                                    | Auth JWT com roles Departamento Estadual Rodovias (SYSTEM_ADMIN, ADMIN, HR, GUARD, etc.)                                                                                        |
-| **Conclusão**      | Front é a **referência** de negócio. Backend atual **não atende** ao front; é necessário **adaptar** o backend ao domínio Departamento Estadual Rodovias e expor APIs que o front consuma. |
+| **Domínio**        | Mudanças internacionais EUA–Brasil (clientes, agendamentos, containers, estoque, financeiro, RH, motorista, leads)                                                                         | Segurança patrimonial (Departamento de Estradas de Rodagem): turnos, postos, rondas, checkpoints, ocorrências, veículos, panic events, reports (checklists, férias, rescisões, etc.) |
+| **Fonte de dados** | `DataContext` com dados **mock** em memória                                                                                                                                                | Prisma com `schema.prisma` (Departamento de Estradas de Rodagem)                                                                                                                     |
+| **Auth**           | Integrado com API (login/refresh/logout); roles: admin, comercial, logistico, motorista                                                                                                    | Auth JWT com roles Departamento de Estradas de Rodagem (SYSTEM_ADMIN, ADMIN, HR, GUARD, etc.)                                                                                        |
+| **Conclusão**      | Front é a **referência** de negócio. Backend atual **não atende** ao front; é necessário **adaptar** o backend ao domínio Departamento de Estradas de Rodagem e expor APIs que o front consuma. |
 
 ---
 
@@ -95,14 +95,14 @@ Cada tela do front usa o `DataContext`, que hoje mantém estado em memória. Par
 
 ---
 
-## 3. Schema Departamento Estadual Rodovias (`schema.departamento-estadual-rodovias.prisma`) x Front
+## 3. Schema Departamento de Estradas de Rodagem (`schema.departamento-estadual-rodovias.prisma`) x Front
 
 O schema já está alinhado ao domínio do front na maior parte. Resumo:
 
 | Entidade backend (schema.departamento-estadual-rodovias)   | Front (tipos / uso)                          | Observações                                                                                                      |
 | ---------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **Company**                                                | Implícito (multi-tenant)                     | companyId em todas as entidades; front pode enviar header ou usar usuário logado                                 |
-| **User** + **Roles** (ADMIN, FISCAL_CAMPO, OPERADOR, INSPETOR_VIA) | Auth: admin, comercial, logistico, motorista | Mapeamento direto; backend deve usar enum do schema Departamento Estadual Rodovias                               |
+| **User** + **Roles** (ADMIN, FISCAL_CAMPO, OPERADOR, INSPETOR_VIA) | Auth: admin, comercial, logistico, motorista | Mapeamento direto; backend deve usar enum do schema Departamento de Estradas de Rodagem                               |
 | **Cliente**                                                | Cliente                                      | Schema usa `enderecoUSA`/`destinoBrasil` como Json; front usa objetos tipados – garantir contrato (campos) igual |
 | **Estoque**                                                | Estoque                                      | 1 por Company; caixasPequenas/Medias/Grandes, fitasAdesivas                                                      |
 | **Agendamento**                                            | Agendamento                                  | Incluir rotaId opcional; status e campos batem                                                                   |
@@ -126,25 +126,25 @@ Ajustes possíveis no schema (conforme necessidade real do front):
 
 ## 4. Backend atual (departamento-estadual-rodovias-api-lobocode) – o que não serve ao front
 
-Módulos e entidades atuais (Departamento Estadual Rodovias):
+Módulos e entidades atuais (Departamento de Estradas de Rodagem):
 
-- **users** – roles e lógica de postos/guarda; não é o mesmo que “funcionários” do RH Departamento Estadual Rodovias
+- **users** – roles e lógica de postos/guarda; não é o mesmo que “funcionários” do RH Departamento de Estradas de Rodagem
 - **companies** – pode ser reutilizado como “empresa” multi-tenant
-- **posts** – postos de segurança; não existe no front Departamento Estadual Rodovias
+- **posts** – postos de segurança; não existe no front Departamento de Estradas de Rodagem
 - **shifts** – turnos de guarda; não existe no front
 - **patrols** – rondas; não existe no front
 - **checkpoints** – checkpoints de ronda; não existe no front
-- **reports/** – ocorrências, checklists, férias/rescisões estilo segurança; não é o mesmo que Relatórios/Financeiro/RH Departamento Estadual Rodovias
-- **vehicle** – veículos; não é módulo do front Departamento Estadual Rodovias
+- **reports/** – ocorrências, checklists, férias/rescisões estilo segurança; não é o mesmo que Relatórios/Financeiro/RH Departamento de Estradas de Rodagem
+- **vehicle** – veículos; não é módulo do front Departamento de Estradas de Rodagem
 - **panic-events** – pânico; não existe no front
 - **documents** – documentos; pode ser reutilizado
 - **notifications** – notificações; pode ser reutilizado
 - **service-bus** – filas; interno
-- **shared/auth** – auth JWT; **manter**, mas ajustar roles para ADMIN/FISCAL_CAMPO/OPERADOR/INSPETOR_VIA quando usar schema Departamento Estadual Rodovias
+- **shared/auth** – auth JWT; **manter**, mas ajustar roles para ADMIN/FISCAL_CAMPO/OPERADOR/INSPETOR_VIA quando usar schema Departamento de Estradas de Rodagem
 - **shared/files** – upload; **manter**
 - **shared/universal** – CRUD genérico; pode ser útil para entidades simples
 
-Conclusão: a maior parte dos **módulos de negócio** atuais não corresponde ao front. O que **manter e reutilizar**: auth, companies, files, notifications, documents, Prisma, CASL, filtros, mensagens, multi-tenant. O que **criar**: módulos Departamento Estadual Rodovias (clientes, estoque, agendamentos, containers, transacoes, rotas, precos, funcionarios, ponto, folha, ferias, leads, ordens-servico) conforme o schema.departamento-estadual-rodovias e os tipos do front.
+Conclusão: a maior parte dos **módulos de negócio** atuais não corresponde ao front. O que **manter e reutilizar**: auth, companies, files, notifications, documents, Prisma, CASL, filtros, mensagens, multi-tenant. O que **criar**: módulos Departamento de Estradas de Rodagem (clientes, estoque, agendamentos, containers, transacoes, rotas, precos, funcionarios, ponto, folha, ferias, leads, ordens-servico) conforme o schema.departamento-estadual-rodovias e os tipos do front.
 
 ---
 
@@ -152,13 +152,13 @@ Conclusão: a maior parte dos **módulos de negócio** atuais não corresponde a
 
 ### Fase 1 – Schema e base
 
-1. **Ativar o schema Departamento Estadual Rodovias**
+1. **Ativar o schema Departamento de Estradas de Rodagem**
    - Trocar (ou unificar) o uso de `schema.prisma` para `schema.departamento-estadual-rodovias.prisma` (renomear/copiar para `schema.prisma` ou usar multi-schema se a stack permitir).
-   - Rodar migrações em um banco dedicado ao Departamento Estadual Rodovias.
+   - Rodar migrações em um banco dedicado ao Departamento de Estradas de Rodagem.
 2. **Ajustar Auth/Users**
-   - Roles: usar enum do schema Departamento Estadual Rodovias (ADMIN, FISCAL_CAMPO, OPERADOR, INSPETOR_VIA).
+   - Roles: usar enum do schema Departamento de Estradas de Rodagem (ADMIN, FISCAL_CAMPO, OPERADOR, INSPETOR_VIA).
    - Manter login/refresh/logout; JWT com `role` e `companyId` para multi-tenant.
-   - Se ainda existir tabela User do Departamento Estadual Rodovias, criar migração ou nova tabela User compatível com o schema Departamento Estadual Rodovias (name, email, login, password, role, companyId, status, etc.).
+   - Se ainda existir tabela User do Departamento de Estradas de Rodagem, criar migração ou nova tabela User compatível com o schema Departamento de Estradas de Rodagem (name, email, login, password, role, companyId, status, etc.).
 
 ### Fase 2 – Módulos por prioridade (ordem sugerida)
 
@@ -216,4 +216,4 @@ Cada módulo: controller, service, DTOs, validações, guardas por role (e compa
 - **Auth front:** `departamento-estadual-rodoviasmanagementsystem/src/app/services/auth.service.ts`, `api.service.ts` (base URL e interceptors)
 - **Backend atual:** `departamento-estadual-rodovias-api-lobocode/src/app.module.ts`, `src/modules/`
 
-Com essa análise, o próximo passo é ativar o schema Departamento Estadual Rodovias, criar o primeiro módulo (ex.: Clientes) e, em paralelo, ir trocando o DataContext do front para consumir a API real.
+Com essa análise, o próximo passo é ativar o schema Departamento de Estradas de Rodagem, criar o primeiro módulo (ex.: Clientes) e, em paralelo, ir trocando o DataContext do front para consumir a API real.

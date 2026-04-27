@@ -1,8 +1,8 @@
-# Sistema de Mensagens Centralizadas - Departamento Estadual Rodovias
+# Sistema de Mensagens Centralizadas - Departamento de Estradas de Rodagem
 
 ## 📋 Visão Geral
 
-Este módulo centraliza todas as mensagens do sistema Departamento Estadual Rodovias, incluindo validações, erros, sucessos, logs e notificações. O sistema oferece consistência, manutenibilidade e suporte a interpolação de variáveis.
+Este módulo centraliza todas as mensagens do sistema Departamento de Estradas de Rodagem, incluindo validações, erros, sucessos, logs e notificações. O sistema oferece consistência, manutenibilidade e suporte a interpolação de variáveis.
 
 ## 🎯 Características
 
@@ -147,7 +147,7 @@ LOG_MESSAGES.SECURITY.UNAUTHORIZED_ACCESS; // "Tentativa de acesso não autoriza
 ### **5. Notificação (NOTIFICATION_MESSAGES)**
 
 ```typescript
-NOTIFICATION_MESSAGES.USER.WELCOME; // "Bem-vindo ao Departamento Estadual Rodovias!"
+NOTIFICATION_MESSAGES.USER.WELCOME; // "Bem-vindo ao Departamento de Estradas de Rodagem!"
 NOTIFICATION_MESSAGES.BUSINESS.NEW_ROUND_ASSIGNED; // "Nova ronda atribuída"
 ```
 

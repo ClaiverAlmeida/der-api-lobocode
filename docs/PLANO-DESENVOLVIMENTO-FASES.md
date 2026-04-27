@@ -1,8 +1,8 @@
-# 🚀 Plano de Desenvolvimento - Sistema Departamento Estadual Rodovias v1
+# 🚀 Plano de Desenvolvimento - Sistema Departamento de Estradas de Rodagem v1
 
 ## 📋 Visão Geral
 
-Este documento define as fases de desenvolvimento do sistema Departamento Estadual Rodovias, organizadas de forma estratégica para maximizar valor entregue e minimizar riscos técnicos.
+Este documento define as fases de desenvolvimento do sistema Departamento de Estradas de Rodagem, organizadas de forma estratégica para maximizar valor entregue e minimizar riscos técnicos.
 
 ---
 

@@ -15,11 +15,11 @@ export class CreateRegionalsDto {
 
   @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
   @IsString({ message: VALIDATION_MESSAGES.REQUIRED.NAME })
-  name: string;
+  sgr: string;
 
   @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
   @IsString({ message: VALIDATION_MESSAGES.REQUIRED.NAME })
-  region: string;
+  city: string;
 
   @IsOptional()
   @IsEnum(RegionalStatus, {

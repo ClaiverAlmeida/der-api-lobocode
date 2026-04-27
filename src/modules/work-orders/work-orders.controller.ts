@@ -36,12 +36,11 @@ import { CreateWorkOrderCheckListDto } from './dto/create-work-order-checklist-i
   GET: [
     Roles.SYSTEM_ADMIN,
     Roles.ADMIN,
-    Roles.FISCAL_CAMPO,
-    Roles.OPERADOR,
-    Roles.INSPETOR_VIA,
+    Roles.FIELD_TEAM,
+    Roles.C2C,
   ],
-  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.OPERADOR],
-  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.OPERADOR],
+  POST: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C],
+  PATCH: [Roles.SYSTEM_ADMIN, Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C],
   DELETE: [Roles.SYSTEM_ADMIN, Roles.ADMIN],
 })
 @Controller('work-orders')

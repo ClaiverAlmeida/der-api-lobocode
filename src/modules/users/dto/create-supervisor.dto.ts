@@ -9,7 +9,7 @@ export class CreateSupervisorDto extends BaseUserDto {
   @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
   companyId?: string;
 
-  @IsExpectedRole(Roles.OPERADOR, {
+  @IsExpectedRole(Roles.C2C, {
     message: VALIDATION_MESSAGES.REQUIRED.ROLE,
   })
   role: Roles; // Schema DEPARTAMENTO ESTADUAL DE RODOVIAS: mapeado para OPERADOR
