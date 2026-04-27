@@ -1,4 +1,4 @@
-# Por onde começar: migração do backend para Departamento Estadual Rodovias
+# Por onde começar: migração do backend para Departamento de Estradas de Rodagem
 
 Sugestão de ordem para não quebrar tudo de uma vez e ter um primeiro fluxo funcionando (front ↔ API).
 
@@ -6,20 +6,20 @@ Sugestão de ordem para não quebrar tudo de uma vez e ter um primeiro fluxo fun
 
 ## Decisão inicial: banco de dados
 
-- **Opção A (recomendada):** Usar um **banco novo** só para Departamento Estadual Rodovias (ex.: `departamento_estadual_rodovias_dev`). Você mantém o schema atual em outro banco se precisar, e este projeto passa a apontar só para o banco Departamento Estadual Rodovias.
-- **Opção B:** Substituir o banco atual. Só use se não precisar mais dos dados/estrutura Departamento Estadual Rodovias neste projeto.
+- **Opção A (recomendada):** Usar um **banco novo** só para Departamento de Estradas de Rodagem (ex.: `departamento_estadual_rodovias_dev`). Você mantém o schema atual em outro banco se precisar, e este projeto passa a apontar só para o banco Departamento de Estradas de Rodagem.
+- **Opção B:** Substituir o banco atual. Só use se não precisar mais dos dados/estrutura Departamento de Estradas de Rodagem neste projeto.
 
-Seguindo **Opção A**: crie um banco PostgreSQL (ex.: `departamento_estadual_rodovias_dev`), configure `DATABASE_URL` no `.env` para esse banco e use só o schema Departamento Estadual Rodovias daqui pra frente.
+Seguindo **Opção A**: crie um banco PostgreSQL (ex.: `departamento_estadual_rodovias_dev`), configure `DATABASE_URL` no `.env` para esse banco e use só o schema Departamento de Estradas de Rodagem daqui pra frente.
 
 ---
 
-## Passo 1 – Ativar o schema Departamento Estadual Rodovias
+## Passo 1 – Ativar o schema Departamento de Estradas de Rodagem
 
 1. **Backup do schema atual** (para referência ou rollback):
    ```bash
    cp prisma/schema.prisma prisma/schema.departamento-estadual-rodovias.backup.prisma
    ```
-2. **Substituir o schema ativo** pelo Departamento Estadual Rodovias:
+2. **Substituir o schema ativo** pelo Departamento de Estradas de Rodagem:
    ```bash
    cp prisma/schema.departamento-estadual-rodovias.prisma prisma/schema.prisma
    ```
@@ -27,7 +27,7 @@ Seguindo **Opção A**: crie um banco PostgreSQL (ex.: `departamento_estadual_ro
    ```bash
    npx prisma generate
    ```
-4. **Criar a primeira migração** no banco Departamento Estadual Rodovias:
+4. **Criar a primeira migração** no banco Departamento de Estradas de Rodagem:
    ```bash
    npx prisma migrate dev --name init_departamento_estadual_rodovias
    ```
@@ -38,7 +38,7 @@ Seguindo **Opção A**: crie um banco PostgreSQL (ex.: `departamento_estadual_ro
 ## Passo 2 – Ajustar Auth e seed para o novo modelo
 
 - O **Auth** atual (login/refresh/logout) pode ser mantido; o que muda é o **modelo User** e o **enum Roles**.
-- No schema Departamento Estadual Rodovias, `User` tem `role: Roles` com `ADMIN | FISCAL_CAMPO | OPERADOR | INSPETOR_VIA`.
+- No schema Departamento de Estradas de Rodagem, `User` tem `role: Roles` com `ADMIN | FISCAL_CAMPO | OPERADOR | INSPETOR_VIA`.
 - Ajustes necessários:
   1. **Auth (JWT payload):** Garantir que o payload use os novos roles (ex.: `ADMIN`, `FISCAL_CAMPO`, `OPERADOR`, `INSPETOR_VIA`) em vez dos antigos (SYSTEM_ADMIN, GUARD, etc.). Isso pode exigir alterar o serviço de login e o que lê do Prisma (buscar usuário pelo novo `User`).
   2. **Seed:** Criar ao menos uma **Company** e um **User** (ex.: admin) com role `ADMIN` e senha conhecida, para testar login no front.
@@ -66,9 +66,9 @@ Depois que Clientes estiver estável, o front pode trocar o DataContext de clien
 | --- | ----------------------------------------------------------------------------------------------------------------- |
 | 1   | Backup do `schema.prisma` atual → `schema.departamento-estadual-rodovias.backup.prisma`                           |
 | 2   | Substituir `schema.prisma` pelo conteúdo de `schema.departamento-estadual-rodovias.prisma`                        |
-| 3   | Configurar `DATABASE_URL` para o banco Departamento Estadual Rodovias (ex.: `departamento_estadual_rodovias_dev`) |
+| 3   | Configurar `DATABASE_URL` para o banco Departamento de Estradas de Rodagem (ex.: `departamento_estadual_rodovias_dev`) |
 | 4   | `npx prisma generate` e `npx prisma migrate dev --name init_departamento_estadual_rodovias`                       |
 | 5   | Ajustar Auth (e dependentes) para o novo `User` e `Roles`; ajustar seed (Company + User ADMIN)                    |
 | 6   | Criar módulo **Clientes** (controller, service, DTOs, guard) e testar no front                                    |
 
-Recomendação: **começar pelo Passo 1 (ativar o schema Departamento Estadual Rodovias e migrar o banco)**. Em seguida Passo 2 (auth + seed) e depois Passo 3 (módulo Clientes). Se quiser, na próxima mensagem podemos detalhar só o Passo 1 (comandos e nomes de arquivos exatos) ou ir direto para o código do Passo 2 e 3.
+Recomendação: **começar pelo Passo 1 (ativar o schema Departamento de Estradas de Rodagem e migrar o banco)**. Em seguida Passo 2 (auth + seed) e depois Passo 3 (módulo Clientes). Se quiser, na próxima mensagem podemos detalhar só o Passo 1 (comandos e nomes de arquivos exatos) ou ir direto para o código do Passo 2 e 3.

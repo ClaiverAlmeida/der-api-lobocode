@@ -21,13 +21,13 @@ export class PostResidentService extends BaseUserService {
       userValidator,
       userQueryService,
       userPermissionService,
-      Roles.OPERADOR,
+      Roles.C2C,
     );
   }
 
   //  Funcionalidades específicas (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: mapeado para OPERADOR)
   async criarNovoPostResident(dto: CreatePostResidentDto) {
-    this.userPermissionService.validarCriacaoDeUserComRole(Roles.OPERADOR);
+    this.userPermissionService.validarCriacaoDeUserComRole(Roles.C2C);
 
     // Valida se email é único
     await this.validarSeEmailEhUnico(dto.email);

@@ -2,9 +2,9 @@
 
 ## 📋 Visão Geral da Fase 1
 
-A **Fase 1** é a base fundamental do sistema **Departamento Estadual Rodovias Engine** - uma plataforma para gestão de segurança patrimonial. Nesta fase, construiremos a infraestrutura técnica robusta que suportará o controle de acesso multi-tenant com sistema de roles hierárquico, garantindo segurança, escalabilidade e manutenibilidade.
+A **Fase 1** é a base fundamental do sistema **Departamento de Estradas de Rodagem Engine** - uma plataforma para gestão de segurança patrimonial. Nesta fase, construiremos a infraestrutura técnica robusta que suportará o controle de acesso multi-tenant com sistema de roles hierárquico, garantindo segurança, escalabilidade e manutenibilidade.
 
-### 🎯 **Escopo do Sistema Departamento Estadual Rodovias**
+### 🎯 **Escopo do Sistema Departamento de Estradas de Rodagem**
 
 O sistema gerencia **condomínios e empresas de segurança** com:
 

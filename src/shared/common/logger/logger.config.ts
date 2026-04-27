@@ -8,7 +8,7 @@ export const loggerConfig = {
         winston.format.timestamp(),
         winston.format.errors({ stack: true }),
         nestWinstonModuleUtilities.format.nestLike(
-          'Departamento Estadual Rodovias',
+          'Departamento de Estradas de Rodagem',
           {
             prettyPrint: true,
             colors: true,

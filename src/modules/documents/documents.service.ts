@@ -143,9 +143,9 @@ export class DocumentsService {
         DocumentRecipientType.HR,
         DocumentRecipientType.SUPERVISOR,
       ];
-    } else if (userRole === Roles.OPERADOR) {
+    } else if (userRole === Roles.C2C) {
       recipientTypes = [DocumentRecipientType.SUPERVISOR];
-    } else if (userRole === Roles.FISCAL_CAMPO) {
+    } else if (userRole === Roles.FIELD_TEAM) {
       recipientTypes = [DocumentRecipientType.HR];
     } else {
       // Usuário sem permissão para receber documentos
@@ -415,7 +415,7 @@ export class DocumentsService {
         roles = [Roles.ADMIN, Roles.SYSTEM_ADMIN];
         break;
       case DocumentRecipientType.SUPERVISOR:
-        roles = [Roles.OPERADOR, Roles.ADMIN, Roles.SYSTEM_ADMIN];
+        roles = [Roles.C2C, Roles.FIELD_TEAM, Roles.ADMIN, Roles.SYSTEM_ADMIN];
         break;
       case DocumentRecipientType.ADMIN:
         // ADMIN recebe documentos para ADMIN e SYSTEM_ADMIN

@@ -5,7 +5,7 @@
 export type EntityNameModel =
   | 'user'
   | 'company'
-  // Departamento Estadual Rodovias
+  // Departamento de Estradas de Rodagem
   | 'regional'
   | 'location'
   | 'asset'
@@ -16,7 +16,7 @@ export type EntityNameModel =
 export type EntityNameCasl =
   | 'User'
   | 'Company'
-  // Departamento Estadual Rodovias
+  // Departamento de Estradas de Rodagem
   | 'Regional'
   | 'Location'
   | 'Asset'
@@ -35,7 +35,7 @@ export const ENTITY_MAPPING = {
   // Core entities
   user: 'User',
   company: 'Company',
-  // Departamento Estadual Rodovias
+  // Departamento de Estradas de Rodagem
   regional: 'Regional',
   location: 'Location',
   asset: 'Asset',
@@ -50,7 +50,7 @@ export const ENTITY_MAPPING = {
 export const CASL_TO_MODEL_MAPPING = {
   User: 'user',
   Company: 'company',
-  // Departamento Estadual Rodovias
+  // Departamento de Estradas de Rodagem
   Regional: 'regional',
   Location: 'location',
   Asset: 'asset',

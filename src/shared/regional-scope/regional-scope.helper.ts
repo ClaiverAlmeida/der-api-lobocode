@@ -7,7 +7,11 @@ export function construirWhereImpossivel(): { id: { in: [] } } {
 }
 
 export function isUsuarioAdministradorEmpresaOuSistema(user: User): boolean {
-  return user.role === Roles.SYSTEM_ADMIN || user.role === Roles.ADMIN;
+  return (
+    user.role === Roles.SYSTEM_ADMIN ||
+    user.role === Roles.ADMIN ||
+    user.role === Roles.C2C
+  );
 }
 
 /**

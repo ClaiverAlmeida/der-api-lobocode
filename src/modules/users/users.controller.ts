@@ -60,14 +60,14 @@ export class UsersController {
 
   @Get('drivers')
   @CaslRead('User')
-  @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR, Roles.INSPETOR_VIA)
+  @RequiredRoles(Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C)
   buscarTodosAll() {
     return this.service.buscarTodosMotoristas();
   }
 
   @Get('all-work-order-assignees')
   @CaslRead('User')
-  @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR, Roles.INSPETOR_VIA)
+  @RequiredRoles(Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C)
   buscarTodosResponsaveisPorOrdensDeServico(
     @Query('locationId') locationId?: string,
   ) {
@@ -76,7 +76,7 @@ export class UsersController {
 
   @Get()
   @CaslRead('User')
-  @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR)
+  @RequiredRoles(Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C)
   buscarTodos(
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '20',
@@ -88,7 +88,7 @@ export class UsersController {
 
   @Get('search')
   @CaslRead('User')
-  @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR)
+  @RequiredRoles(Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C)
   buscarUsuarios(
     @Query('q') query: string = '',
     @Query('page') page: string = '1',
@@ -101,14 +101,14 @@ export class UsersController {
 
   @Get('active-guards-on-shift-post/:postId')
   @CaslRead('User')
-  @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR, Roles.INSPETOR_VIA)
+  @RequiredRoles(Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C)
   buscarVigilantesAtivosEmTurnoNoPosto(@Param('postId') postId: string) {
     return this.service.buscarVigilantesAtivosEmTurnoNoPosto(postId);
   }
 
   @Get('post/:postId/clients')
   @CaslRead('User')
-  @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR)
+  @RequiredRoles(Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C)
   buscarClientesPorPosto(
     @Param('postId') postId: string,
     @Query('page') page: string = '1',
@@ -127,7 +127,7 @@ export class UsersController {
 
   @Get(':id')
   @CaslRead('User')
-  @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR, Roles.INSPETOR_VIA, Roles.SYSTEM_ADMIN)
+  @RequiredRoles(Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C, Roles.SYSTEM_ADMIN)
   buscarPorId(@Param('id') id: string) {
     return this.service.buscarPorId(id);
   }
@@ -203,21 +203,21 @@ export class UsersController {
   @Patch(':id')
   @CaslUpdate('User')
   @CaslFields('User', ['name', 'email', 'phone', 'address', 'status', 'profilePicture'])
-  @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR)
+  @RequiredRoles(Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C)
   atualizar(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.service.atualizar(id, updateUserDto);
   }
 
   @Delete(':id')
   @CaslDelete('User')
-  @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR)
+  @RequiredRoles(Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C)
   desativar(@Param('id') id: string) {
     return this.service.desativar(id);
   }
 
   @Post(':id/restore')
   @CaslUpdate('User')
-  @RequiredRoles(Roles.ADMIN, Roles.FISCAL_CAMPO, Roles.OPERADOR)
+  @RequiredRoles(Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C)
   reativar(@Param('id') id: string) {
     return this.service.reativar(id);
   }

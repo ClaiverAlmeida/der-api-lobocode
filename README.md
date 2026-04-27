@@ -4,7 +4,7 @@
 
 ## 📌 Sobre o Projeto
 
-O **Departamento Estadual Rodovias Engine** é um sistema backend robusto para gestão de segurança patrimonial, desenvolvido com NestJS 11. O sistema oferece controle de acesso multi-tenant com gestão de usuários baseada em roles, focando em segurança, escalabilidade e manutenibilidade.
+O **Departamento de Estradas de Rodagem Engine** é um sistema backend robusto para gestão de segurança patrimonial, desenvolvido com NestJS 11. O sistema oferece controle de acesso multi-tenant com gestão de usuários baseada em roles, focando em segurança, escalabilidade e manutenibilidade.
 
 ### 🎯 **Escopo do Sistema**
 

@@ -28,10 +28,10 @@ import { TenantService } from '../../shared/tenant/tenant.service';
 
 function montarRotuloResponsavelOs(
   name: string,
-  regional: { name: string; region: string } | null | undefined,
+  regional: { sgr: string; city: string } | null | undefined,
 ): string {
-  const nomeRegional = regional?.name?.trim() || '—';
-  const regiao = regional?.region?.trim() || '—';
+  const nomeRegional = regional?.sgr?.trim() || '—';
+  const regiao = regional?.city?.trim() || '—';
   return `${name} - ${nomeRegional} - ${regiao}`;
 }
 
@@ -147,7 +147,7 @@ export class UsersService extends BaseUserService {
     const whereClause: Prisma.UserWhereInput = {
       ...baseWhereClause,
       role: {
-        in: [Roles.FISCAL_CAMPO, Roles.OPERADOR],
+        in: [Roles.FIELD_TEAM, Roles.C2C],
       },
     };
 
@@ -192,7 +192,7 @@ export class UsersService extends BaseUserService {
   async buscarVigilantesAtivosEmTurnoNoPosto(_postId: string) {
     // Schema DEPARTAMENTO ESTADUAL DE RODOVIAS: sem Shift/Post - retorna usuários ativos com role INSPETOR_VIA/OPERADOR
     const whereClause = this.userQueryService.construirWhereClauseParaRead({
-      role: { in: [Roles.INSPETOR_VIA, Roles.OPERADOR] },
+      role: { in: [Roles.FIELD_TEAM, Roles.FIELD_TEAM] },
       status: UserStatus.ACTIVE,
     });
 
@@ -209,7 +209,7 @@ export class UsersService extends BaseUserService {
 
   // Busca todos os motoristas ativos
   async buscarTodosMotoristas() {
-    const whereClause = { role: Roles.INSPETOR_VIA, status: UserStatus.ACTIVE };
+    const whereClause = { role: Roles.FIELD_TEAM, status: UserStatus.ACTIVE };
     return this.userRepository.buscarMuitos(whereClause);
   }
 
@@ -235,7 +235,7 @@ export class UsersService extends BaseUserService {
     }
 
     const whereClause: Prisma.UserWhereInput = {
-      role: { in: [Roles.INSPETOR_VIA, Roles.OPERADOR] },
+      role: { in: [Roles.FIELD_TEAM, Roles.C2C] },
       status: UserStatus.ACTIVE,
       deletedAt: null,
       ...(companyId ? { companyId } : {}),
@@ -249,7 +249,7 @@ export class UsersService extends BaseUserService {
         select: { permissionType: true },
       },
       regional: {
-        select: { id: true, name: true, region: true },
+        select: { id: true, sgr: true, city: true },
       },
     };
 
@@ -279,8 +279,8 @@ export class UsersService extends BaseUserService {
         name: u.name,
         label: montarRotuloResponsavelOs(u.name, regional),
         regionalId: u.regionalId,
-        regionalName: regional?.name ?? null,
-        region: regional?.region ?? null,
+        regionalName: regional?.sgr ?? null,
+        city: regional?.city ?? null,
       };
     });
   }
