@@ -29,17 +29,41 @@ export class FilesService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
-    // Em Docker, usar nome do serviço 'minio'. Em desenvolvimento local, usar 'localhost'
-    // MINIO_HOST pode ser 'minio' (Docker) ou 'localhost' (desenvolvimento)
-    const minioHost = this.configService.get<string>('MINIO_HOST', 'minio');
-    // Converter porta para número (pode vir como string do env)
-    const minioPort = parseInt(
-      this.configService.get<string>('MINIO_PORT', '3311'),
-      10,
-    );
-    // Converter useSSL para boolean (pode vir como string do env)
-    const useSSLStr = this.configService.get<string>('MINIO_USE_SSL', 'false');
-    const useSSL = useSSLStr === 'true';
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
+    const endpoint = this.configService.get<string>('MINIO_ENDPOINT');
+
+    let endpointHost: string | undefined;
+    let endpointPort: number | undefined;
+    let endpointUseSSL: boolean | undefined;
+    if (endpoint) {
+      try {
+        const endpointUrl = new URL(endpoint);
+        endpointHost = endpointUrl.hostname || undefined;
+        endpointPort = endpointUrl.port
+          ? Number.parseInt(endpointUrl.port, 10)
+          : undefined;
+        endpointUseSSL = endpointUrl.protocol === 'https:';
+      } catch {
+        // Endpoint inválido: segue para os fallbacks do ambiente.
+      }
+    }
+
+    const minioHost =
+      this.configService.get<string>('MINIO_HOST') ??
+      endpointHost ??
+      (isProduction ? 'minio' : 'localhost');
+
+    const minioPortRaw = this.configService.get<string>('MINIO_PORT');
+    const minioPort =
+      (minioPortRaw ? Number.parseInt(minioPortRaw, 10) : undefined) ??
+      endpointPort ??
+      (isProduction ? 9000 : 3311);
+
+    const useSSLRaw = this.configService.get<string>('MINIO_USE_SSL');
+    const useSSL =
+      useSSLRaw !== undefined
+        ? useSSLRaw.toLowerCase() === 'true'
+        : (endpointUseSSL ?? false);
 
     this.minioClient = new Minio.Client({
       endPoint: minioHost,
@@ -84,7 +108,7 @@ export class FilesService {
         `Política de acesso público configurada para bucket '${this.bucketName}'`,
       );
     } catch (error) {
-      this.logger.error(`Erro ao inicializar bucket: ${error.message}`);
+      this.logger.error(`Erro ao inicializar bucket: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -135,8 +159,8 @@ export class FilesService {
       this.logger.log(`Arquivo enviado com sucesso: ${fileRecord.id}`);
       return fileRecord;
     } catch (error) {
-      this.logger.error(`Erro ao fazer upload: ${error.message}`);
-      throw new Error(`Falha no upload: ${error.message}`);
+      this.logger.error(`Erro ao fazer upload: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Falha no upload: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -161,7 +185,7 @@ export class FilesService {
 
       return { files, total };
     } catch (error) {
-      this.logger.error(`Erro ao buscar arquivos: ${error.message}`);
+      this.logger.error(`Erro ao buscar arquivos: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   }
@@ -178,7 +202,7 @@ export class FilesService {
 
       return file;
     } catch (error) {
-      this.logger.error(`Erro ao buscar arquivo: ${error.message}`);
+      this.logger.error(`Erro ao buscar arquivo: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   }
@@ -203,7 +227,7 @@ export class FilesService {
 
       this.logger.log(`Arquivo deletado: ${id}`);
     } catch (error) {
-      this.logger.error(`Erro ao deletar arquivo: ${error.message}`);
+      this.logger.error(`Erro ao deletar arquivo: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   }
