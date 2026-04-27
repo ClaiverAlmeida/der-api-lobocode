@@ -17,6 +17,7 @@ export async function runSeed() {
   await delay(1500);
   const company = await seedCompany();
   await seedUsers(company.id);
+  await seedWorkOrderColunms(company.id);
 }
 
 async function seedCompany() {
@@ -67,6 +68,39 @@ async function seedUsers(companyId: string) {
       '[Seed] Usuário admin criado (admin@departamento-estadual-rodovias.com / Admin123@Senha)',
     );
   }
+}
+
+async function seedWorkOrderColunms(companyId: string) {
+  const workOrderColumns = [
+    {
+      name: 'A Fazer',
+      color: '#6b7280',
+    },
+    {
+      name: 'Em Progresso',
+      color: '#3b82f6',
+    },
+    {
+      name: 'Pausada',
+      color: '#eab308',
+    },
+    {
+      name: 'Cancelada',
+      color: '#ef4444',
+    },
+    {
+      name: 'Concluído',
+      color: '#10b981',
+    },
+  ];
+
+  await prisma.workOrderColumn.createMany({
+    data: workOrderColumns.map((column) => ({
+      ...column,
+      companyId,
+      regionalId: null,
+    })),
+  })
 }
 
 runSeed()

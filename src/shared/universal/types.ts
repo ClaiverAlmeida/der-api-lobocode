@@ -10,6 +10,7 @@ export type EntityNameModel =
   | 'location'
   | 'asset'
   | 'workOrder'
+  | 'workOrderColumn'
   | 'appointment'
   | 'workOrderChecklistItem'
 
@@ -21,6 +22,7 @@ export type EntityNameCasl =
   | 'Location'
   | 'Asset'
   | 'WorkOrder'
+  | 'WorkOrderColumn'
   | 'Appointment'
   | 'WorkOrderChecklistItem'
 
@@ -40,6 +42,7 @@ export const ENTITY_MAPPING = {
   location: 'Location',
   asset: 'Asset',
   workOrder: 'WorkOrder',
+  workOrderColumn: 'WorkOrderColumn',
   appointment: 'Appointment',
   workOrderChecklistItem: 'WorkOrderChecklistItem'
 } as const;
@@ -55,6 +58,7 @@ export const CASL_TO_MODEL_MAPPING = {
   Location: 'location',
   Asset: 'asset',
   WorkOrder: 'workOrder',
+  WorkOrderColumn: 'workOrderColumn',
   Appointment: 'appointment',
   WorkOrderChecklistItem: 'workOrderChecklistItem'
 } as const;

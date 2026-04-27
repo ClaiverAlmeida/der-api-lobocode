@@ -29,6 +29,7 @@ import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { UpdateWorkOrderChecklistItemDto } from './dto/update-work-order-checklist-item.dto';
 import { WorkOrdersService } from './work-orders.service';
 import { CreateWorkOrderCheckListDto } from './dto/create-work-order-checklist-item.dto';
+import { MoveWorkOrderColumnDto } from './dto/move-work-order-column.dto';
 
 @UseGuards(AuthGuard, RoleByMethodGuard)
 @UseInterceptors(TenantInterceptor)
@@ -93,6 +94,14 @@ export class WorkOrdersController extends UniversalController<
     @Body() body: CompleteWorkOrderDto,
   ) {
     return this.service.concluirOrdem(id, body);
+  }
+
+  @Patch(':id/column')
+  async moverParaColuna(
+    @Param('id') id: string,
+    @Body() body: MoveWorkOrderColumnDto,
+  ) {
+    return this.service.moverParaColuna(id, body);
   }
 
   @Patch(':id/checklist-items/:itemId')

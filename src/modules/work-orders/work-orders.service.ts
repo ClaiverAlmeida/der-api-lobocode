@@ -34,6 +34,7 @@ import { CreateWorkOrderCommentDto } from './dto/create-work-order-comment.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { UpdateWorkOrderChecklistItemDto } from './dto/update-work-order-checklist-item.dto';
 import { CreateWorkOrderCheckListDto } from './dto/create-work-order-checklist-item.dto';
+import { MoveWorkOrderColumnDto } from './dto/move-work-order-column.dto';
 
 @Injectable({ scope: Scope.REQUEST })
 export class WorkOrdersService extends UniversalService<
@@ -45,6 +46,14 @@ export class WorkOrdersService extends UniversalService<
   private pendingUpdateAssigneeIds: string[] | null = null;
 
   private readonly detalhesInclude: any = {
+    column: {
+      select: {
+        id: true,
+        name: true,
+        color: true,
+        regionalId: true,
+      },
+    },
     location: {
       include: {
         regional: {
@@ -128,6 +137,14 @@ export class WorkOrdersService extends UniversalService<
     this.entityConfig = {
       ...this.entityConfig,
       includes: {
+        column: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            regionalId: true,
+          },
+        },
         location: {
           include: {
             regional: {
@@ -339,6 +356,66 @@ export class WorkOrdersService extends UniversalService<
     return this.buscarDetalhesPorId(ordem.id);
   }
 
+  async moverParaColuna(id: string, dto: MoveWorkOrderColumnDto) {
+    const companyId = this.obterCompanyId();
+    const ordem = await this.prisma.workOrder.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+        ...(companyId && { companyId }),
+      },
+      include: {
+        location: {
+          select: {
+            regionalId: true,
+          },
+        },
+      },
+    });
+
+    if (!ordem) {
+      throw new NotFoundException('Ordem de serviço não encontrada.');
+    }
+
+    const columnId = dto.columnId ?? null;
+    if (columnId) {
+      const coluna = await this.prisma.workOrderColumn.findFirst({
+        where: {
+          id: columnId,
+          deletedAt: null,
+          companyId: ordem.companyId,
+        },
+        select: {
+          id: true,
+          regionalId: true,
+        },
+      });
+
+      if (!coluna) {
+        throw new NotFoundException('Coluna do Kanban não encontrada.');
+      }
+
+      if (
+        coluna.regionalId &&
+        coluna.regionalId !== (ordem.location?.regionalId ?? null)
+      ) {
+        throw new BadRequestException(
+          'A coluna selecionada pertence a outra regional.',
+        );
+      }
+    }
+
+    await this.prisma.workOrder.update({
+      where: { id: ordem.id },
+      data: {
+        columnId,
+        updatedBy: this.obterUsuarioLogadoId() ?? undefined,
+      },
+    });
+
+    return this.buscarDetalhesPorId(ordem.id);
+  }
+
   async atualizarItemDoChecklist(
     id: string,
     itemId: string,
@@ -469,7 +546,7 @@ export class WorkOrdersService extends UniversalService<
   }
 
   protected async antesDeCriar(data: CreateWorkOrderDto): Promise<void> {
-    await this.buscarLocalidadeValida(data.locationId);
+    const location = await this.buscarLocalidadeValida(data.locationId);
 
     const responsaveis = await this.resolverResponsaveisDoPayload(data);
     this.pendingCreateAssigneeIds = responsaveis.map((responsavel) => responsavel.id);
@@ -482,6 +559,16 @@ export class WorkOrdersService extends UniversalService<
 
     if (!data.status) {
       data.status = WorkOrderStatus.PENDING;
+    }
+
+    if (!data.columnId) {
+      const defaultColumn = await this.obterColunaInicial(
+        this.obterCompanyId() ?? undefined,
+        location.regionalId ?? null,
+      );
+      if (defaultColumn) {
+        data.columnId = defaultColumn.id;
+      }
     }
 
     if (!data.slaDeadlineHours && data.dueDate) {
@@ -674,6 +761,25 @@ export class WorkOrdersService extends UniversalService<
     }
 
     return location;
+  }
+
+  private async obterColunaInicial(
+    companyId?: string,
+    regionalId?: string | null,
+  ) {
+    if (!companyId) {
+      return null;
+    }
+
+    return this.prisma.workOrderColumn.findFirst({
+      where: {
+        companyId,
+        deletedAt: null,
+        OR: [{ regionalId: null }, ...(regionalId ? [{ regionalId }] : [])],
+      },
+      orderBy: [{ regionalId: 'desc' }, { createdAt: 'asc' }],
+      select: { id: true },
+    });
   }
 
   private async resolverResponsaveisDoPayload(
