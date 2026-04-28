@@ -119,6 +119,15 @@ export class WorkOrdersService extends UniversalService<
       },
       orderBy: { createdAt: 'desc' },
     },
+    planning: {
+      select: {
+        id: true,
+        title: true,
+        serviceType: true,
+        startDate: true,
+        endDate: true,
+      },
+    },
   };
 
   constructor(
@@ -178,6 +187,15 @@ export class WorkOrdersService extends UniversalService<
                 role: true,
               },
             },
+          },
+        },
+        planning: {
+          select: {
+            id: true,
+            title: true,
+            serviceType: true,
+            startDate: true,
+            endDate: true,
           },
         },
       },
@@ -631,6 +649,10 @@ export class WorkOrdersService extends UniversalService<
 
     delete (data as any).assignedToUserIds;
 
+    if (data.planningId) {
+      await this.validarPlanejamentoDisponivel(data.planningId, undefined, data.type);
+    }
+
     if (this.pendingCreateAssigneeIds.length > 0 && !data.status) {
       data.status = WorkOrderStatus.ASSIGNED;
     }
@@ -716,6 +738,16 @@ export class WorkOrdersService extends UniversalService<
 
     if (data.locationId) {
       await this.buscarLocalidadeValida(data.locationId);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(data as object, 'planningId')) {
+      if (data.planningId) {
+        await this.validarPlanejamentoDisponivel(
+          data.planningId,
+          _id,
+          data.type,
+        );
+      }
     }
 
     const payloadPossuiLista = Object.prototype.hasOwnProperty.call(
@@ -934,6 +966,45 @@ export class WorkOrdersService extends UniversalService<
     return responsaveis;
   }
 
+  private async validarPlanejamentoDisponivel(
+    planningId: string,
+    workOrderIdPermitida?: string,
+    workOrderType?: WorkOrderType,
+  ) {
+    const companyId = this.obterCompanyId();
+    const planning = await this.prisma.planning.findFirst({
+      where: {
+        id: planningId,
+        deletedAt: null,
+        ...(companyId && { companyId }),
+      },
+      include: {
+        workOrder: {
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!planning) {
+      throw new NotFoundException('Planejamento não encontrado.');
+    }
+
+    if (
+      planning.workOrder &&
+      planning.workOrder.id !== workOrderIdPermitida
+    ) {
+      throw new BadRequestException(
+        'Este planejamento já está associado a outra OS.',
+      );
+    }
+
+    if (workOrderType && planning.serviceType !== workOrderType) {
+      throw new BadRequestException(
+        'O tipo da OS deve ser igual ao tipo do planejamento associado.',
+      );
+    }
+  }
+
   private async sincronizarResponsaveis(
     workOrderId: string,
     userIds: string[],
@@ -951,54 +1022,6 @@ export class WorkOrdersService extends UniversalService<
       });
     }
   }
-
-  // private async criarChecklistPadrao(id: string, type: WorkOrderType) {
-  // const labels = this.obterChecklistPadraoPorTipo(type);
-
-  // if (labels.length === 0) {
-  //   return;
-  // }
-
-  // await this.repository.atualizar(
-  //   'workOrder',
-  //   { id },
-  //   {
-  //     checklistItems: {
-  //       create: labels.map((label, index) => ({
-  //         label,
-  //         sortOrder: index + 1,
-  //       })),
-  //     },
-  //   } as any,
-  // );
-  // }
-
-  // private obterChecklistPadraoPorTipo(type: WorkOrderType): string[] {
-  //   if (type === WorkOrderType.PREVENTIVE) {
-  //     return [
-  //       'Validar alimentação elétrica do ponto de intervenção',
-  //       'Inspecionar estrutura física e fixação do local',
-  //       'Limpar lente e gabinete',
-  //       'Executar teste funcional',
-  //     ];
-  //   }
-
-  //   if (type === WorkOrderType.EMERGENCY) {
-  //     return [
-  //       'Identificar causa raiz da falha',
-  //       'Restabelecer comunicação do ponto afetado',
-  //       'Validar transmissão de dados',
-  //       'Registrar evidências da intervenção',
-  //     ];
-  //   }
-
-  //   return [
-  //     'Inspecionar ponto de intervenção em campo',
-  //     'Executar correção necessária',
-  //     'Validar retorno da operação',
-  //     'Registrar observações finais',
-  //   ];
-  // }
 
   private async registrarComentarioAutomatico(
     workOrderId: string,

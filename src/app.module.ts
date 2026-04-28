@@ -49,12 +49,12 @@ import {
 import { FilesModule } from './shared/files/files.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { NotificationModule } from './modules/notifications/notification.module';
-import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { AssetsModule } from './modules/assets/assets.module';
 import { RegionalsModule } from './modules/regionals/regionals.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
 import { OperationalDashboardModule } from './modules/operational-dashboard/operational-dashboard.module';
+import { PlanningModule } from './modules/planning/planning.module';
 //javascript es7
 
 @Module({
@@ -77,12 +77,12 @@ import { OperationalDashboardModule } from './modules/operational-dashboard/oper
     FilesModule,
     DocumentsModule,
     NotificationModule,
-    AppointmentsModule,
     AssetsModule,
     RegionalsModule,
     LocationsModule,
     WorkOrdersModule,
     OperationalDashboardModule,
+    PlanningModule,
   ],
   controllers: [AppController],
   providers: [

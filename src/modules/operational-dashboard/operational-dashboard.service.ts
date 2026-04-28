@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import {
+    AssetType,
   AssetStatus,
   Prisma,
   WorkOrderSlaStatus,
   WorkOrderStatus,
   WorkOrderPriority,
+  WorkOrderType,
 } from '@prisma/client';
 import { PrismaService } from 'src/shared/prisma/prisma.service';
 import { TenantService } from 'src/shared/tenant/tenant.service';
@@ -46,6 +48,8 @@ export class OperationalDashboardService {
       pendingSlaWorkOrders,
       workOrderTrendRecords,
       mttrRecords,
+      monitoredEquipmentPairs,
+      lastPreventiveByPair,
     ] = await this.prisma.$transaction([
       this.prisma.asset.count({ where: assetWhere }),
       this.prisma.asset.count({
@@ -143,6 +147,48 @@ export class OperationalDashboardService {
           updatedAt: true,
         },
       }),
+      this.prisma.workOrder.findMany({
+        where: {
+          ...workOrderWhere,
+          equipmentType: {
+            in: [AssetType.CAMERA, AssetType.ATDB, AssetType.TMV],
+          },
+        },
+        distinct: ['locationId', 'equipmentType'],
+        select: {
+          locationId: true,
+          equipmentType: true,
+          location: {
+            select: {
+              id: true,
+              name: true,
+              code: true,
+              regional: {
+                select: {
+                  id: true,
+                  city: true,
+                  sgr: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.workOrder.groupBy({
+        where: {
+          ...workOrderWhere,
+          type: WorkOrderType.PREVENTIVE,
+          status: WorkOrderStatus.COMPLETED,
+          equipmentType: {
+            in: [AssetType.CAMERA, AssetType.ATDB, AssetType.TMV],
+          },
+        },
+        by: ['locationId', 'equipmentType'],
+        orderBy: [{ locationId: 'asc' }, { equipmentType: 'asc' }],
+        _max: {
+          updatedAt: true,
+        },
+      }),
     ]);
 
     const availabilityRate =
@@ -168,6 +214,37 @@ export class OperationalDashboardService {
       status: order.status,
       dueDate: order.dueDate?.toISOString() ?? null,
     }));
+    const preventiveMap = new Map(
+      lastPreventiveByPair.map((item) => [
+        `${item.locationId}:${item.equipmentType}`,
+        item._max?.updatedAt ?? null,
+      ]),
+    );
+    const preventiveAgingByLocationEquipment = monitoredEquipmentPairs
+      .map((pair) => {
+        const preventiveAt = preventiveMap.get(
+          `${pair.locationId}:${pair.equipmentType}`,
+        );
+        const daysSinceLastPreventive = preventiveAt
+          ? this.calcularDiasDesde(preventiveAt)
+          : null;
+
+        return {
+          locationId: pair.locationId,
+          locationName: pair.location?.name ?? 'Localidade',
+          locationCode: pair.location?.code ?? null,
+          regionalName: pair.location?.regional?.city ?? null,
+          equipmentType: pair.equipmentType,
+          lastPreventiveAt: preventiveAt?.toISOString() ?? null,
+          daysSinceLastPreventive,
+        };
+      })
+      .sort((a, b) => {
+        const left = a.daysSinceLastPreventive ?? Number.MAX_SAFE_INTEGER;
+        const right = b.daysSinceLastPreventive ?? Number.MAX_SAFE_INTEGER;
+        return right - left;
+      })
+      .slice(0, 8);
 
     return {
       assets: {
@@ -190,7 +267,14 @@ export class OperationalDashboardService {
       pendingWorkOrders,
       workOrdersTrend,
       mttrTrend,
+      preventiveAgingByLocationEquipment,
     };
+  }
+
+  private calcularDiasDesde(date: Date): number {
+    const diffMs = Date.now() - date.getTime();
+    if (diffMs <= 0) return 0;
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
   }
 
   private obterInicioDosUltimosDias(totalDias: number): Date {

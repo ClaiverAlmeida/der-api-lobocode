@@ -75,6 +75,10 @@ export class CreateWorkOrderDto {
   columnId?: string;
 
   @IsOptional()
+  @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
+  planningId?: string;
+
+  @IsOptional()
   @IsInt({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   slaDeadlineHours?: number;
 
