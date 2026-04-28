@@ -32,7 +32,6 @@ enum UserStatus {
 }
 
 enum PermissionType {
-  APPOINTMENTS // Agendamentos
   REPORTS // Relatórios
   INSPETOR_VIA // Motorista
 }
@@ -40,13 +39,6 @@ enum PermissionType {
 // ===============================================
 // ENUMS - DOMÍNIO DEPARTAMENTO ESTADUAL DE RODOVIAS
 // ===============================================
-
-enum AppointmentStatus {
-  PENDING // Pendente
-  CONFIRMED // Confirmado
-  COLLECTED // Coletado
-  CANCELLED // Cancelado
-}
 
 enum AssetType {
   CAMERA // Câmera
@@ -90,6 +82,7 @@ enum WorkOrderStatus {
   PENDING
   ASSIGNED
   IN_PROGRESS
+  PAUSED
   COMPLETED
   CANCELLED
 }
@@ -160,22 +153,22 @@ model Company {
   contactEmail String?
   contactPhone String?
 
-  users        User[]
-  assets       Asset[]
-  locations    Location[]
-  workOrders   WorkOrder[]
-  appointments Appointment[]
+  users      User[]
+  assets     Asset[]
+  locations  Location[]
+  workOrders WorkOrder[]
+  regionals          Regional[]
+  workOrderColumns   WorkOrderColumn[]
+  plannings          Planning[]
 
   files              File[]              @relation("CompanyFiles")
   documents          Document[]          @relation("CompanyDocuments")
   notifications      Notification[]      @relation("CompanyNotifications")
   notificationGroups NotificationGroup[] @relation("CompanyNotificationGroups")
 
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  deletedAt        DateTime?
-  regionals        Regional[]
-  workOrderColumns WorkOrderColumn[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([cnpj])
   @@index([name])
@@ -200,17 +193,17 @@ model User {
   regionalId String?
   regional   Regional? @relation(fields: [regionalId], references: [id], onDelete: SetNull)
 
-  permissions   Permission[]
-  oauthAccounts OAuthAccount[]
-  appointments  Appointment[]
-
-  files             File[]                    @relation("UserFiles")
-  documentsSent     Document[]                @relation("DocumentSender")
-  notifications     NotificationRecipient[]   @relation("UserNotifications")
-  groupMemberships  NotificationGroupMember[] @relation("UserGroupMemberships")
-  pushSubscriptions PushSubscription[]        @relation("UserPushSubscriptions")
-  workOrderComments WorkOrderComment[]        @relation("WorkOrderCommentsAuthor")
-  assignees         WorkOrderAssignee[]       @relation("UserWorkOrderAssignee")
+  permissions             Permission[]
+  oauthAccounts           OAuthAccount[]
+  workOrderPauseHistories WorkOrderPauseHistory[]
+  planningAssignments     PlanningResponsible[]
+  files                   File[]                    @relation("UserFiles")
+  documentsSent           Document[]                @relation("DocumentSender")
+  notifications           NotificationRecipient[]   @relation("UserNotifications")
+  groupMemberships        NotificationGroupMember[] @relation("UserGroupMemberships")
+  pushSubscriptions       PushSubscription[]        @relation("UserPushSubscriptions")
+  workOrderComments       WorkOrderComment[]        @relation("WorkOrderCommentsAuthor")
+  assignees               WorkOrderAssignee[]       @relation("UserWorkOrderAssignee")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -335,7 +328,7 @@ model Location {
   referenceKm Float
   status      RegionalStatus @default(ACTIVE)
   ipAddresses Json?
-  
+
   companyId String
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -361,7 +354,7 @@ model WorkOrderColumn {
   color String
 
   companyId  String
-  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   regionalId String?
   regional   Regional? @relation(fields: [regionalId], references: [id], onDelete: SetNull)
 
@@ -402,6 +395,9 @@ model WorkOrder {
   slaStatus        WorkOrderSlaStatus? @default(OK)
   equipmentType    AssetType?
 
+  planningId String?   @unique
+  planning   Planning? @relation(fields: [planningId], references: [id], onDelete: SetNull)
+
   columnId String?
   column   WorkOrderColumn? @relation(fields: [columnId], references: [id], onDelete: SetNull)
 
@@ -417,8 +413,9 @@ model WorkOrder {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  createdBy String?
-  updatedBy String?
+  createdBy               String?
+  updatedBy               String?
+  workOrderPauseHistories WorkOrderPauseHistory[]
 
   @@index([companyId])
   @@index([locationId])
@@ -473,40 +470,53 @@ model WorkOrderEvidence {
   @@index([fileId])
 }
 
-// ===============================================
-// AGENDAMENTOS
-// ===============================================
+model WorkOrderPauseHistory {
+  id     String @id @default(cuid())
+  reason String
 
-model Appointment {
-  id             String   @id @default(cuid())
-  /// Data da coleta (apenas data, sem horário). Persistida como DATE; na API usar ISO YYYY-MM-DD.
-  collectionDate DateTime @db.Date
-  collectionTime String?
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
 
-  address      String
-  status       AppointmentStatus @default(PENDING)
-  observations String?
+  pausedByUserId String
+  pausedByUser   User   @relation(fields: [pausedByUserId], references: [id], onDelete: Cascade)
 
-  qtyBoxes Int
+  createdAt DateTime @default(now())
 
-  companyId String
-  clientId  String
-  userId    String
-  routeId   String?
+  @@index([workOrderId])
+}
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+model Planning {
+  id          String        @id @default(cuid())
+  title       String
+  serviceType WorkOrderType
+  startDate   DateTime
+  endDate     DateTime
+
+  companyId    String
+  company      Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  responsibles PlanningResponsible[]
+  workOrder    WorkOrder?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@index([companyId])
-  @@index([clientId])
-  @@index([collectionDate])
-  @@index([status])
-  @@index([routeId])
-  @@index([deletedAt])
+}
+
+model PlanningResponsible {
+  id         String @id @default(cuid())
+  planningId String
+  userId     String
+
+  planning Planning @relation(fields: [planningId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([planningId, userId])
+  @@index([planningId])
+  @@index([userId])
 }
 
 // ===============================================

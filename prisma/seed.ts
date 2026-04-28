@@ -1,9 +1,5 @@
 // prisma/seed.ts - Seed para schema DEPARTAMENTO ESTADUAL DE RODOVIAS
-import {
-  PrismaClient,
-  Roles,
-  UserStatus,
-} from '@prisma/client';
+import { PrismaClient, Roles, UserStatus } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -68,6 +64,62 @@ async function seedUsers(companyId: string) {
       '[Seed] Usuário admin criado (admin@departamento-estadual-rodovias.com / Admin123@Senha)',
     );
   }
+
+  const c2cData = {
+    name: 'C2C DEPARTAMENTO ESTADUAL DE RODOVIAS',
+    email: 'c2c@departamento-estadual-rodovias.com',
+    login: 'c2c@departamento-estadual-rodovias.com',
+    password: 'C2C123@Senha',
+    role: Roles.C2C,
+    status: UserStatus.ACTIVE,
+    phone: '(11) 99999-9999',
+  };
+
+  const existsC2C = await prisma.user.findUnique({
+    where: { email: c2cData.email },
+  });
+
+  if (!existsC2C) {
+    const hashedPassword = await bcrypt.hash(c2cData.password, 10);
+    await prisma.user.create({
+      data: {
+        ...c2cData,
+        company: { connect: { id: companyId } },
+        password: hashedPassword,
+      },
+    });
+    console.log(
+      '[Seed] Usuário C2C criado (c2c@departamento-estadual-rodovias.com / C2C123@Senha)',
+    );
+  }
+
+  const fieldTeamData = {
+    name: 'Equipe de Campo DEPARTAMENTO ESTADUAL DE RODOVIAS',
+    email: 'field-team@departamento-estadual-rodovias.com',
+    login: 'field-team@departamento-estadual-rodovias.com',
+    password: 'FieldTeam123@Senha',
+    role: Roles.FIELD_TEAM,
+    status: UserStatus.ACTIVE,
+    phone: '(11) 99999-9999',
+  };
+
+  const existsFieldTeam = await prisma.user.findUnique({
+    where: { email: fieldTeamData.email },
+  });
+
+  if (!existsFieldTeam) {
+    const hashedPassword = await bcrypt.hash(fieldTeamData.password, 10);
+    await prisma.user.create({
+      data: {
+        ...fieldTeamData,
+        company: { connect: { id: companyId } },
+        password: hashedPassword,
+      },
+    });
+    console.log(
+      '[Seed] Usuário Equipe de Campo criado (field-team@departamento-estadual-rodovias.com / FieldTeam123@Senha)',
+    );
+  }
 }
 
 async function seedWorkOrderColunms(companyId: string) {
@@ -94,13 +146,21 @@ async function seedWorkOrderColunms(companyId: string) {
     },
   ];
 
+  const exists = await prisma.workOrderColumn.findMany({
+    where: {
+      name: { in: workOrderColumns.map((column) => column.name) },
+      companyId,
+    },
+  });
+  if (exists.length === workOrderColumns.length) return;
+
   await prisma.workOrderColumn.createMany({
     data: workOrderColumns.map((column) => ({
       ...column,
       companyId,
       regionalId: null,
     })),
-  })
+  });
 }
 
 runSeed()

@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  Optional,
-  Scope,
-} from '@nestjs/common';
+import { Inject, Injectable, Optional, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import {
   UniversalMetricsService,
@@ -14,8 +8,8 @@ import {
   UniversalService,
   createEntityConfig,
 } from 'src/shared/universal';
-import { CreateWorkOrderColumnDto } from './dto/create-work-order-column.dto';
-import { UpdateWorkOrderColumnDto } from './dto/update-work-order-column.dto';
+import { CreateWorkOrderColumnDto } from '../dto/create-work-order-column.dto';
+import { UpdateWorkOrderColumnDto } from '../dto/update-work-order-column.dto';
 
 @Injectable({ scope: Scope.REQUEST })
 export class WorkOrderColumnsService extends UniversalService<
@@ -57,6 +51,7 @@ export class WorkOrderColumnsService extends UniversalService<
         deletedAt: null,
         ...(companyId && { companyId }),
       },
+      orderBy: { createdAt: 'asc' },
       includes: {
         regional: {
           select: {
@@ -66,20 +61,6 @@ export class WorkOrderColumnsService extends UniversalService<
           },
         },
       },
-      orderBy: { createdAt: 'asc' },
     };
-  }
-
-  protected async antesDeCriar(data: CreateWorkOrderColumnDto): Promise<void> {
-    const companyId = this.obterCompanyId();
-    if (!companyId) {
-      throw new BadRequestException('Empresa do usuário não encontrada.');
-    }
-
-    data.companyId = companyId;
-
-    if ((data as { regionalId?: string }).regionalId === '') {
-      delete (data as { regionalId?: string }).regionalId;
-    }
   }
 }

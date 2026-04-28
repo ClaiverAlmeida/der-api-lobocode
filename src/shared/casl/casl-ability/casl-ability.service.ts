@@ -29,7 +29,6 @@ export type PermissionResource =
       Document: any;
       Company: any;
       Client: any;
-      Appointment: any;
       File: any;
       Notification: any;
       Regional: any;
@@ -82,11 +81,8 @@ const basicResourcePermissions = {
   },
 };
 
-// Permissões operacionais (schema DEPARTAMENTO ESTADUAL DE RODOVIAS - Appointment, Client, etc.)
+// Permissões operacionais (schema DEPARTAMENTO ESTADUAL DE RODOVIAS - Client, etc.)
 const operationalPermissions = {
-  appointmentManagement: (user: User, { can }: any) => {
-    can('manage', 'Appointment', { companyId: user.companyId });
-  },
   clientManagement: (user: User, { can }: any) => {
     can('manage', 'Client', { companyId: user.companyId });
   },
@@ -112,7 +108,6 @@ const administrativePermissions = {
 
   resourceManagement: (user: User, { can }: any) => {
     can('manage', 'Document', { companyId: user.companyId });
-    can('manage', 'Appointment', { companyId: user.companyId });
     can('manage', 'Client', { companyId: user.companyId });
   },
 
@@ -250,7 +245,6 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     administrativePermissions.companyRead(user, { can });
     profilePermissions.ownProfileExtended(user, { can });
     basicResourcePermissions.readDocuments(user, { can });
-    operationalPermissions.appointmentManagement(user, { can });
     operationalPermissions.clientManagement(user, { can });
     specificPermissions.notifications(user, { can });
     specificPermissions.workOrdersManage(user, { can });
@@ -260,7 +254,6 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     administrativePermissions.companyRead(user, { can });
     profilePermissions.ownProfileExtended(user, { can });
     basicResourcePermissions.readDocuments(user, { can });
-    operationalPermissions.appointmentManagement(user, { can });
     operationalPermissions.clientManagement(user, { can });
     specificPermissions.notifications(user, { can });
     specificPermissions.workOrdersManage(user, { can });

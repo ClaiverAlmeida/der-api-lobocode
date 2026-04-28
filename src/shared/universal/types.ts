@@ -13,6 +13,7 @@ export type EntityNameModel =
   | 'workOrderColumn'
   | 'appointment'
   | 'workOrderChecklistItem'
+  | 'planning';
 
 export type EntityNameCasl =
   | 'User'
@@ -23,8 +24,8 @@ export type EntityNameCasl =
   | 'Asset'
   | 'WorkOrder'
   | 'WorkOrderColumn'
-  | 'Appointment'
   | 'WorkOrderChecklistItem'
+  | 'Planning';
 
 // ============================================================================
 // 🔄 MAPEAMENTO AUTOMÁTICO MODEL ↔ CASL
@@ -43,8 +44,8 @@ export const ENTITY_MAPPING = {
   asset: 'Asset',
   workOrder: 'WorkOrder',
   workOrderColumn: 'WorkOrderColumn',
-  appointment: 'Appointment',
-  workOrderChecklistItem: 'WorkOrderChecklistItem'
+  workOrderChecklistItem: 'WorkOrderChecklistItem',
+  planning: 'Planning',
 } as const;
 
 /**
@@ -59,8 +60,8 @@ export const CASL_TO_MODEL_MAPPING = {
   Asset: 'asset',
   WorkOrder: 'workOrder',
   WorkOrderColumn: 'workOrderColumn',
-  Appointment: 'appointment',
-  WorkOrderChecklistItem: 'workOrderChecklistItem'
+  WorkOrderChecklistItem: 'workOrderChecklistItem',
+  Planning: 'planning',
 } as const;
 
 // ============================================================================
@@ -128,11 +129,11 @@ export type SelectConfig = Record<
 
 export interface IncludeConfig {
   [key: string]:
-  | boolean
-  | {
-    select?: SelectConfig;
-    include?: IncludeConfig;
-  };
+    | boolean
+    | {
+        select?: SelectConfig;
+        include?: IncludeConfig;
+      };
 }
 
 export interface TransformConfig {
