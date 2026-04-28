@@ -9,6 +9,7 @@ import {
   IsArray,
 } from 'class-validator';
 import {
+  AssetType,
   WorkOrderPriority,
   WorkOrderStatus,
   WorkOrderType,
@@ -62,6 +63,16 @@ export class CreateWorkOrderDto {
   @IsOptional()
   @IsDateString({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   dueDate?: string;
+
+  @IsOptional()
+  @IsEnum(AssetType, {
+    message: VALIDATION_MESSAGES.FORMAT.ENUM_INVALID,
+  })
+  equipmentType?: AssetType;
+
+  @IsOptional()
+  @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
+  columnId?: string;
 
   @IsOptional()
   @IsInt({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })

@@ -34,6 +34,7 @@ import { CreateWorkOrderCommentDto } from './dto/create-work-order-comment.dto';
 import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { UpdateWorkOrderChecklistItemDto } from './dto/update-work-order-checklist-item.dto';
 import { CreateWorkOrderCheckListDto } from './dto/create-work-order-checklist-item.dto';
+import { MoveWorkOrderColumnDto } from './dto/move-work-order-column.dto';
 
 @Injectable({ scope: Scope.REQUEST })
 export class WorkOrdersService extends UniversalService<
@@ -45,6 +46,14 @@ export class WorkOrdersService extends UniversalService<
   private pendingUpdateAssigneeIds: string[] | null = null;
 
   private readonly detalhesInclude: any = {
+    column: {
+      select: {
+        id: true,
+        name: true,
+        color: true,
+        regionalId: true,
+      },
+    },
     location: {
       include: {
         regional: {
@@ -128,6 +137,14 @@ export class WorkOrdersService extends UniversalService<
     this.entityConfig = {
       ...this.entityConfig,
       includes: {
+        column: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            regionalId: true,
+          },
+        },
         location: {
           include: {
             regional: {
@@ -194,9 +211,10 @@ export class WorkOrdersService extends UniversalService<
       });
     }
 
-    const status = ordem.status === WorkOrderStatus.COMPLETED
-      ? WorkOrderStatus.COMPLETED
-      : WorkOrderStatus.ASSIGNED;
+    const status =
+      ordem.status === WorkOrderStatus.COMPLETED
+        ? WorkOrderStatus.COMPLETED
+        : WorkOrderStatus.ASSIGNED;
 
     await this.prisma.workOrder.update({
       where: { id: ordem.id },
@@ -220,7 +238,9 @@ export class WorkOrdersService extends UniversalService<
   async removerResponsavel(id: string, userId: string) {
     const ordem = await this.buscarOrdemPorId(id);
 
-    const existente = ordem.assignees.find((assignee) => assignee.userId === userId);
+    const existente = ordem.assignees.find(
+      (assignee) => assignee.userId === userId,
+    );
     if (!existente) {
       throw new NotFoundException('Responsável não encontrado na OS.');
     }
@@ -229,7 +249,9 @@ export class WorkOrdersService extends UniversalService<
       where: { id: existente.id },
     });
 
-    const restantes = ordem.assignees.filter((assignee) => assignee.userId !== userId);
+    const restantes = ordem.assignees.filter(
+      (assignee) => assignee.userId !== userId,
+    );
     const nextStatus =
       restantes.length === 0 && ordem.status === WorkOrderStatus.ASSIGNED
         ? WorkOrderStatus.PENDING
@@ -290,7 +312,9 @@ export class WorkOrdersService extends UniversalService<
     }
 
     if (ordem.status === WorkOrderStatus.CANCELLED) {
-      throw new BadRequestException('Não é possível iniciar uma ordem cancelada.');
+      throw new BadRequestException(
+        'Não é possível iniciar uma ordem cancelada.',
+      );
     }
 
     await this.prisma.workOrder.update({
@@ -337,6 +361,121 @@ export class WorkOrdersService extends UniversalService<
     );
 
     return this.buscarDetalhesPorId(ordem.id);
+  }
+
+  async moverParaColuna(id: string, dto: MoveWorkOrderColumnDto) {
+    const companyId = this.obterCompanyId();
+    const ordem = await this.prisma.workOrder.findFirst({
+      where: {
+        id,
+        deletedAt: null,
+        ...(companyId && { companyId }),
+      },
+      include: {
+        location: {
+          select: {
+            regionalId: true,
+          },
+        },
+        column: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!ordem) {
+      throw new NotFoundException('Ordem de serviço não encontrada.');
+    }
+
+    const columnId = dto.columnId ?? null;
+    let nomeColunaDestino: string | null = null;
+    if (columnId) {
+      const coluna = await this.prisma.workOrderColumn.findFirst({
+        where: {
+          id: columnId,
+          deletedAt: null,
+          companyId: ordem.companyId,
+        },
+        select: {
+          id: true,
+          regionalId: true,
+          name: true,
+        },
+      });
+
+      if (!coluna) {
+        throw new NotFoundException('Coluna do Kanban não encontrada.');
+      }
+
+      if (
+        coluna.regionalId &&
+        coluna.regionalId !== (ordem.location?.regionalId ?? null)
+      ) {
+        throw new BadRequestException(
+          'A coluna selecionada pertence a outra regional.',
+        );
+      }
+
+      nomeColunaDestino = coluna.name;
+    }
+
+    const novoStatus = this.obterStatusPorNomeDaColuna(nomeColunaDestino);
+
+    await this.prisma.workOrder.update({
+      where: { id: ordem.id },
+      data: {
+        columnId,
+        status: novoStatus,
+        slaStatus: this.calcularSlaStatus(ordem.dueDate ?? null, novoStatus),
+        updatedBy: this.obterUsuarioLogadoId() ?? undefined,
+      },
+    });
+
+    return this.buscarDetalhesPorId(ordem.id);
+  }
+
+  private obterStatusPorNomeDaColuna(
+    nomeColuna: string | null,
+  ): WorkOrderStatus {
+    if (!nomeColuna) {
+      return WorkOrderStatus.PENDING;
+    }
+
+    const normalizado = nomeColuna
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+    if (
+      normalizado.includes('conclu') ||
+      normalizado.includes('finaliz') ||
+      normalizado.includes('encerr')
+    ) {
+      return WorkOrderStatus.COMPLETED;
+    }
+
+    if (
+      normalizado.includes('andamento') ||
+      normalizado.includes('execu') ||
+      normalizado.includes('progresso') ||
+      normalizado.includes('fazendo')
+    ) {
+      return WorkOrderStatus.IN_PROGRESS;
+    }
+
+    if (normalizado.includes('atribu')) {
+      return WorkOrderStatus.ASSIGNED;
+    }
+
+    if (normalizado.includes('cancel')) {
+      return WorkOrderStatus.CANCELLED;
+    }
+
+    return WorkOrderStatus.PENDING;
   }
 
   async atualizarItemDoChecklist(
@@ -436,11 +575,7 @@ export class WorkOrdersService extends UniversalService<
     return this.buscarDetalhesPorId(ordem.id);
   }
 
-  async adicionarEvidencia(
-    id: string,
-    file: any,
-    description?: string,
-  ) {
+  async adicionarEvidencia(id: string, file: any, description?: string) {
     const ordem = await this.buscarOrdemPorId(id);
     const usuario = this.obterUsuarioLogado();
 
@@ -469,10 +604,16 @@ export class WorkOrdersService extends UniversalService<
   }
 
   protected async antesDeCriar(data: CreateWorkOrderDto): Promise<void> {
-    await this.buscarLocalidadeValida(data.locationId);
+    const location = await this.buscarLocalidadeValida(data.locationId);
+    await this.validarBloqueioPorOsAberta(
+      data.locationId,
+      data.type as 'CORRECTIVE' | 'PREVENTIVE',
+    );
 
     const responsaveis = await this.resolverResponsaveisDoPayload(data);
-    this.pendingCreateAssigneeIds = responsaveis.map((responsavel) => responsavel.id);
+    this.pendingCreateAssigneeIds = responsaveis.map(
+      (responsavel) => responsavel.id,
+    );
 
     delete (data as any).assignedToUserIds;
 
@@ -484,14 +625,64 @@ export class WorkOrdersService extends UniversalService<
       data.status = WorkOrderStatus.PENDING;
     }
 
+    if (!data.columnId) {
+      const defaultColumn = await this.obterColunaInicial(
+        this.obterCompanyId() ?? undefined,
+        location.regionalId ?? null,
+      );
+      if (defaultColumn) {
+        data.columnId = defaultColumn.id;
+      }
+    }
+
     if (!data.slaDeadlineHours && data.dueDate) {
-      data.slaDeadlineHours = this.calcularHorasRestantes(new Date(data.dueDate));
+      data.slaDeadlineHours = this.calcularHorasRestantes(
+        new Date(data.dueDate),
+      );
     }
 
     data.slaStatus = this.calcularSlaStatus(
       data.dueDate ? new Date(data.dueDate) : null,
       data.status,
     );
+  }
+
+  private async validarBloqueioPorOsAberta(
+    locationId: string,
+    type: 'CORRECTIVE' | 'PREVENTIVE',
+  ): Promise<void> {
+    const tiposBloqueados = [
+      WorkOrderType.CORRECTIVE,
+      WorkOrderType.PREVENTIVE,
+    ];
+    
+    if (!tiposBloqueados.includes(type)) {
+      return;
+    }
+
+    const companyId = this.obterCompanyId();
+    const osAberta = await this.prisma.workOrder.findFirst({
+      where: {
+        deletedAt: null,
+        locationId,
+        type,
+        status: {
+          notIn: [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED],
+        },
+        ...(companyId ? { companyId } : {}),
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (osAberta) {
+      throw new BadRequestException(
+        `Bloqueio: já existe uma OS ${
+          type === WorkOrderType.CORRECTIVE ? 'corretiva' : 'preventiva'
+        } em aberto para esta localidade. Conclua a OS atual antes de abrir outra.`,
+      );
+    }
   }
 
   protected async antesDeAtualizar(
@@ -567,7 +758,10 @@ export class WorkOrdersService extends UniversalService<
     type: WorkOrderType;
   }): Promise<void> {
     try {
-      await this.sincronizarResponsaveis(data.id, this.pendingCreateAssigneeIds);
+      await this.sincronizarResponsaveis(
+        data.id,
+        this.pendingCreateAssigneeIds,
+      );
       // await this.criarChecklistPadrao(data.id, data.type);
       await this.registrarComentarioAutomatico(data.id, 'OS criada.');
 
@@ -676,6 +870,25 @@ export class WorkOrdersService extends UniversalService<
     return location;
   }
 
+  private async obterColunaInicial(
+    companyId?: string,
+    regionalId?: string | null,
+  ) {
+    if (!companyId) {
+      return null;
+    }
+
+    return this.prisma.workOrderColumn.findFirst({
+      where: {
+        companyId,
+        deletedAt: null,
+        OR: [{ regionalId: null }, ...(regionalId ? [{ regionalId }] : [])],
+      },
+      orderBy: [{ regionalId: 'desc' }, { createdAt: 'asc' }],
+      select: { id: true },
+    });
+  }
+
   private async resolverResponsaveisDoPayload(
     data: Pick<CreateWorkOrderDto, 'assignedToUserIds'>,
   ) {
@@ -698,7 +911,10 @@ export class WorkOrdersService extends UniversalService<
     return responsaveis;
   }
 
-  private async sincronizarResponsaveis(workOrderId: string, userIds: string[]) {
+  private async sincronizarResponsaveis(
+    workOrderId: string,
+    userIds: string[],
+  ) {
     await this.prisma.workOrderAssignee.deleteMany({
       where: { workOrderId },
     });
@@ -711,28 +927,27 @@ export class WorkOrdersService extends UniversalService<
         })),
       });
     }
-
   }
 
   // private async criarChecklistPadrao(id: string, type: WorkOrderType) {
-    // const labels = this.obterChecklistPadraoPorTipo(type);
+  // const labels = this.obterChecklistPadraoPorTipo(type);
 
-    // if (labels.length === 0) {
-    //   return;
-    // }
+  // if (labels.length === 0) {
+  //   return;
+  // }
 
-    // await this.repository.atualizar(
-    //   'workOrder',
-    //   { id },
-    //   {
-    //     checklistItems: {
-    //       create: labels.map((label, index) => ({
-    //         label,
-    //         sortOrder: index + 1,
-    //       })),
-    //     },
-    //   } as any,
-    // );
+  // await this.repository.atualizar(
+  //   'workOrder',
+  //   { id },
+  //   {
+  //     checklistItems: {
+  //       create: labels.map((label, index) => ({
+  //         label,
+  //         sortOrder: index + 1,
+  //       })),
+  //     },
+  //   } as any,
+  // );
   // }
 
   // private obterChecklistPadraoPorTipo(type: WorkOrderType): string[] {
@@ -772,18 +987,14 @@ export class WorkOrdersService extends UniversalService<
       return;
     }
 
-    await this.repository.atualizar(
-      'workOrder',
-      { id: workOrderId },
-      {
-        comments: {
-          create: {
-            author: { connect: { id: autorId } },
-            text,
-          },
+    await this.repository.atualizar('workOrder', { id: workOrderId }, {
+      comments: {
+        create: {
+          author: { connect: { id: autorId } },
+          text,
         },
-      } as any,
-    );
+      },
+    } as any);
   }
 
   private normalizarDetalhesDaOrdem<T>(ordem: T): T {
@@ -844,4 +1055,3 @@ export class WorkOrdersService extends UniversalService<
     return Math.ceil(diferenca / (1000 * 60 * 60));
   }
 }
-

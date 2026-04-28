@@ -171,10 +171,11 @@ model Company {
   notifications      Notification[]      @relation("CompanyNotifications")
   notificationGroups NotificationGroup[] @relation("CompanyNotificationGroups")
 
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  deletedAt DateTime?
-  regionals Regional[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  regionals        Regional[]
+  workOrderColumns WorkOrderColumn[]
 
   @@index([cnpj])
   @@index([name])
@@ -313,8 +314,9 @@ model Regional {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  locations Location[]
-  users     User[]
+  locations        Location[]
+  users            User[]
+  workOrderColumns WorkOrderColumn[]
 
   @@index([companyId])
   @@index([sgr])
@@ -332,7 +334,8 @@ model Location {
   uf          String
   referenceKm Float
   status      RegionalStatus @default(ACTIVE)
-
+  ipAddresses Json?
+  
   companyId String
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -352,19 +355,21 @@ model Location {
   @@index([deletedAt])
 }
 
-// model WorkOrderColumn {
-//   id String @id @default(cuid())
-//   name String
-//   color String
+model WorkOrderColumn {
+  id    String @id @default(cuid())
+  name  String
+  color String
 
-//   companyId String
-//   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  regionalId String?
+  regional   Regional? @relation(fields: [regionalId], references: [id], onDelete: SetNull)
 
-//   workOrders WorkOrder[]  
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
-//   deletedAt DateTime?
-// }
+  workOrders WorkOrder[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+}
 
 model WorkOrderAssignee {
   id          String    @id @default(cuid())
@@ -397,8 +402,8 @@ model WorkOrder {
   slaStatus        WorkOrderSlaStatus? @default(OK)
   equipmentType    AssetType?
 
-  // columnId String
-  // column   WorkOrderColumn     @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  columnId String?
+  column   WorkOrderColumn? @relation(fields: [columnId], references: [id], onDelete: SetNull)
 
   company   Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   location  Location            @relation(fields: [locationId], references: [id], onDelete: Restrict)

@@ -54,6 +54,7 @@ import { AssetsModule } from './modules/assets/assets.module';
 import { RegionalsModule } from './modules/regionals/regionals.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
+import { WorkOrderColumnsModule } from './modules/work-order-columns/work-order-columns.module';
 import { OperationalDashboardModule } from './modules/operational-dashboard/operational-dashboard.module';
 
 //javascript es7
@@ -83,6 +84,7 @@ import { OperationalDashboardModule } from './modules/operational-dashboard/oper
     RegionalsModule,
     LocationsModule,
     WorkOrdersModule,
+    WorkOrderColumnsModule,
     OperationalDashboardModule,
   ],
   controllers: [AppController],
