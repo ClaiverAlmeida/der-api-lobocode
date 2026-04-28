@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import {
+  AssetType,
   FileType,
   Prisma,
   Roles,
@@ -101,6 +102,18 @@ export class WorkOrdersService extends UniversalService<
             mimeType: true,
             size: true,
             createdAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    },
+    workOrderPauseHistories: {
+      include: {
+        pausedByUser: {
+          select: {
+            id: true,
+            name: true,
+            role: true,
           },
         },
       },
@@ -608,6 +621,7 @@ export class WorkOrdersService extends UniversalService<
     await this.validarBloqueioPorOsAberta(
       data.locationId,
       data.type as 'CORRECTIVE' | 'PREVENTIVE',
+      data.equipmentType,
     );
 
     const responsaveis = await this.resolverResponsaveisDoPayload(data);
@@ -650,15 +664,23 @@ export class WorkOrdersService extends UniversalService<
   private async validarBloqueioPorOsAberta(
     locationId: string,
     type: 'CORRECTIVE' | 'PREVENTIVE',
+    equipmentType?: AssetType,
   ): Promise<void> {
     const tiposBloqueados = [
       WorkOrderType.CORRECTIVE,
       WorkOrderType.PREVENTIVE,
     ];
-    
+
     if (!tiposBloqueados.includes(type)) {
       return;
     }
+
+    const equipmentTypeLabel: Record<AssetType, string> = {
+      CAMERA: 'câmera',
+      ATDB: 'ATDB',
+      TMV: 'TMV',
+      OTHER: 'equipamento',
+    };
 
     const companyId = this.obterCompanyId();
     const osAberta = await this.prisma.workOrder.findFirst({
@@ -666,6 +688,7 @@ export class WorkOrdersService extends UniversalService<
         deletedAt: null,
         locationId,
         type,
+        ...(equipmentType && { equipmentType }),
         status: {
           notIn: [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED],
         },
@@ -680,7 +703,7 @@ export class WorkOrdersService extends UniversalService<
       throw new BadRequestException(
         `Bloqueio: já existe uma OS ${
           type === WorkOrderType.CORRECTIVE ? 'corretiva' : 'preventiva'
-        } em aberto para esta localidade. Conclua a OS atual antes de abrir outra.`,
+        } em aberto para esta localidade para a ${equipmentTypeLabel[equipmentType ?? AssetType.OTHER]}. Conclua a OS atual deste equipamento na localidade antes de abrir outra.`,
       );
     }
   }
@@ -1018,6 +1041,11 @@ export class WorkOrdersService extends UniversalService<
         : [],
       evidences: Array.isArray(ordemNormalizada.evidences)
         ? ordemNormalizada.evidences
+        : [],
+      workOrderPauseHistories: Array.isArray(
+        (ordemNormalizada as any).workOrderPauseHistories,
+      )
+        ? (ordemNormalizada as any).workOrderPauseHistories
         : [],
     };
   }

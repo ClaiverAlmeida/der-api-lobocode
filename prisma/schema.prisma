@@ -90,6 +90,7 @@ enum WorkOrderStatus {
   PENDING
   ASSIGNED
   IN_PROGRESS
+  PAUSED
   COMPLETED
   CANCELLED
 }
@@ -212,9 +213,10 @@ model User {
   workOrderComments WorkOrderComment[]        @relation("WorkOrderCommentsAuthor")
   assignees         WorkOrderAssignee[]       @relation("UserWorkOrderAssignee")
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  deletedAt               DateTime?
+  workOrderPauseHistories WorkOrderPauseHistory[]
 
   @@index([companyId])
   @@index([email])
@@ -335,7 +337,7 @@ model Location {
   referenceKm Float
   status      RegionalStatus @default(ACTIVE)
   ipAddresses Json?
-  
+
   companyId String
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -361,7 +363,7 @@ model WorkOrderColumn {
   color String
 
   companyId  String
-  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   regionalId String?
   regional   Regional? @relation(fields: [regionalId], references: [id], onDelete: SetNull)
 
@@ -417,8 +419,9 @@ model WorkOrder {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  createdBy String?
-  updatedBy String?
+  createdBy               String?
+  updatedBy               String?
+  workOrderPauseHistories WorkOrderPauseHistory[]
 
   @@index([companyId])
   @@index([locationId])
@@ -471,6 +474,21 @@ model WorkOrderEvidence {
 
   @@index([workOrderId])
   @@index([fileId])
+}
+
+model WorkOrderPauseHistory {
+  id     String @id @default(cuid())
+  reason String
+
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  pausedByUserId String
+  pausedByUser   User   @relation(fields: [pausedByUserId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([workOrderId])
 }
 
 // ===============================================
