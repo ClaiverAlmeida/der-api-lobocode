@@ -59,6 +59,21 @@ export class PlanningService extends UniversalService<
         ...(companyId && { companyId }),
       },
       includes: {
+        location: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            referenceKm: true,
+            regional: {
+              select: {
+                id: true,
+                sgr: true,
+                city: true,
+              },
+            },
+          },
+        },
         responsibles: {
           include: {
             user: {
@@ -79,13 +94,12 @@ export class PlanningService extends UniversalService<
           },
         },
       },
-      orderBy: { startDate: 'asc' },
+      orderBy: { date: 'asc' },
     };
   }
 
   protected async antesDeCriar(data: CreatePlanningDto): Promise<void> {
     this.validarCompanyId();
-    this.validarPeriodo(data.startDate, data.endDate);
     await this.validarResponsaveis(data.responsibleIds);
 
     if (data.workOrderId) {
@@ -99,8 +113,12 @@ export class PlanningService extends UniversalService<
       })),
     };
     (data as any).title = data.title.trim();
-    (data as any).startDate = new Date(data.startDate);
-    (data as any).endDate = new Date(data.endDate);
+    (data as any).date = new Date(data.date);
+    (data as any).serviceType = data.serviceType;
+    (data as any).equipmentType = data.equipmentType;
+    (data as any).km = data.km;
+    (data as any).observation = data.observation?.trim() || null;
+    (data as any).locationId = data.locationId;
     delete (data as any).responsibleIds;
     delete (data as any).workOrderId;
   }
@@ -122,13 +140,6 @@ export class PlanningService extends UniversalService<
     this.validarCompanyId();
     const atual = await this.buscarPlanningValido(id);
 
-    if (data.startDate || data.endDate) {
-      this.validarPeriodo(
-        data.startDate ?? atual.startDate.toISOString(),
-        data.endDate ?? atual.endDate.toISOString(),
-      );
-    }
-
     if (data.responsibleIds) {
       await this.validarResponsaveis(data.responsibleIds);
       (data as any).responsibles = {
@@ -143,11 +154,11 @@ export class PlanningService extends UniversalService<
     if (data.title !== undefined) {
       (data as any).title = data.title.trim();
     }
-    if (data.startDate !== undefined) {
-      (data as any).startDate = new Date(data.startDate);
+    if (data.date !== undefined) {
+      (data as any).date = new Date(data.date);
     }
-    if (data.endDate !== undefined) {
-      (data as any).endDate = new Date(data.endDate);
+    if (data.observation !== undefined) {
+      (data as any).observation = data.observation?.trim() || null;
     }
 
     this.pendingUpdateWorkOrderCurrentId = atual.workOrder?.id ?? null;
@@ -273,14 +284,6 @@ export class PlanningService extends UniversalService<
 
     if (workOrder.planningId && workOrder.planningId !== planningIdPermitido) {
       throw new BadRequestException('A OS já está vinculada a outro planejamento.');
-    }
-  }
-
-  private validarPeriodo(startDate: string, endDate: string) {
-    if (new Date(endDate) < new Date(startDate)) {
-      throw new BadRequestException(
-        'A data final não pode ser anterior à data inicial.',
-      );
     }
   }
 

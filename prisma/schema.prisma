@@ -153,13 +153,13 @@ model Company {
   contactEmail String?
   contactPhone String?
 
-  users      User[]
-  assets     Asset[]
-  locations  Location[]
-  workOrders WorkOrder[]
-  regionals          Regional[]
-  workOrderColumns   WorkOrderColumn[]
-  plannings          Planning[]
+  users            User[]
+  assets           Asset[]
+  locations        Location[]
+  workOrders       WorkOrder[]
+  regionals        Regional[]
+  workOrderColumns WorkOrderColumn[]
+  plannings        Planning[]
 
   files              File[]              @relation("CompanyFiles")
   documents          Document[]          @relation("CompanyDocuments")
@@ -338,9 +338,10 @@ model Location {
   assets     Asset[]
   workOrders WorkOrder[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   deletedAt DateTime?
+  plannings Planning[]
 
   @@index([companyId])
   @@index([code])
@@ -486,14 +487,20 @@ model WorkOrderPauseHistory {
 }
 
 model Planning {
-  id          String        @id @default(cuid())
-  title       String
-  serviceType WorkOrderType
-  startDate   DateTime
-  endDate     DateTime
+  id            String        @id @default(cuid())
+  title         String
+  date          DateTime
+  serviceType   WorkOrderType
+  equipmentType AssetType
+  km            Float
+  observation String?
 
-  companyId    String
-  company      Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  locationId   String
+  location     Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   responsibles PlanningResponsible[]
   workOrder    WorkOrder?
 
@@ -501,7 +508,9 @@ model Planning {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  @@index([id])
   @@index([companyId])
+  @@index([locationId])
 }
 
 model PlanningResponsible {

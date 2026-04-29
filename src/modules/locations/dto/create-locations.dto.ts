@@ -16,9 +16,9 @@ import { VALIDATION_MESSAGES } from '../../../shared/common/messages';
 import { Type } from 'class-transformer';
 
 class LocationIpAddressDto {
-  @IsNumber({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  @Min(1, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  index: number;
+  @IsString({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
+  @MaxLength(120, { message: VALIDATION_MESSAGES.LENGTH.MAX_LENGTH })
+  name: string;
 
   @IsIP('4', { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   ip: string;

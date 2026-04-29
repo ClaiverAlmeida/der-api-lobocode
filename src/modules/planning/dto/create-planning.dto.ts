@@ -1,13 +1,15 @@
-import { WorkOrderType } from '@prisma/client';
+import { AssetType, WorkOrderType } from '@prisma/client';
 import {
   ArrayMinSize,
   ArrayUnique,
   IsArray,
   IsDateString,
   IsEnum,
+  IsNumber,
   IsNotEmpty,
   IsOptional,
   IsString,
+  Min,
   ValidateIf,
 } from 'class-validator';
 import { VALIDATION_MESSAGES } from 'src/shared/common/messages';
@@ -24,13 +26,24 @@ export class CreatePlanningDto {
   @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
   serviceType: WorkOrderType;
 
-  @IsDateString({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @IsEnum(AssetType, {
+    message: VALIDATION_MESSAGES.FORMAT.ENUM_INVALID,
+  })
   @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
-  startDate: string;
+  equipmentType: AssetType;
 
   @IsDateString({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
-  endDate: string;
+  date: string;
+
+  @IsNumber({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @Min(0, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
+  km: number;
+
+  @IsOptional()
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  observation?: string;
 
   @IsArray({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   @ArrayMinSize(1, { message: VALIDATION_MESSAGES.REQUIRED.FIELD })
@@ -42,4 +55,9 @@ export class CreatePlanningDto {
   @ValidateIf((_, value) => value !== null)
   @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
   workOrderId?: string | null;
+
+  @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
+  locationId: string;
 }
