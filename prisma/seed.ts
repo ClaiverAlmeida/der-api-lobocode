@@ -127,28 +127,34 @@ async function seedWorkOrderColunms(companyId: string) {
     {
       name: 'A Fazer',
       color: '#6b7280',
+      sortOrder: 0,
     },
     {
       name: 'Em Progresso',
       color: '#3b82f6',
+      sortOrder: 1,
     },
     {
       name: 'Pausada',
       color: '#eab308',
+      sortOrder: 2,
     },
     {
       name: 'Cancelada',
       color: '#ef4444',
+      sortOrder: 3,
     },
     {
       name: 'Concluído',
       color: '#10b981',
+      sortOrder: 4,
     },
   ];
 
   const exists = await prisma.workOrderColumn.findMany({
     where: {
       name: { in: workOrderColumns.map((column) => column.name) },
+      sortOrder: { in: workOrderColumns.map((column) => column.sortOrder) },
       companyId,
     },
   });

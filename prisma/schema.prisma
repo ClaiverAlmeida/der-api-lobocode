@@ -353,6 +353,8 @@ model WorkOrderColumn {
   id    String @id @default(cuid())
   name  String
   color String
+  sortOrder Int @default(0)
+  isArchived Boolean @default(false)
 
   companyId  String
   company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -363,6 +365,10 @@ model WorkOrderColumn {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   deletedAt  DateTime?
+
+  @@index([id])
+  @@index([companyId])
+  @@index([sortOrder])
 }
 
 model WorkOrderAssignee {

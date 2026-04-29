@@ -1,4 +1,4 @@
-import { IsHexColor, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsHexColor, IsOptional, IsString } from 'class-validator';
 import { VALIDATION_MESSAGES } from '../../../shared/common/messages';
 import { IsCUID } from '../../../shared/validators';
 
@@ -9,6 +9,10 @@ export class CreateWorkOrderColumnDto {
   @IsString({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
   @IsHexColor({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   color: string;
+
+  @IsBoolean({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @IsOptional()
+  isArchived?: boolean;
 
   @IsOptional()
   @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
