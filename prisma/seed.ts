@@ -153,15 +153,30 @@ async function seedWorkOrderColunms(companyId: string) {
 
   const exists = await prisma.workOrderColumn.findMany({
     where: {
-      name: { in: workOrderColumns.map((column) => column.name) },
-      sortOrder: { in: workOrderColumns.map((column) => column.sortOrder) },
       companyId,
+      OR: workOrderColumns.map((column) => ({
+        name: column.name,
+        sortOrder: column.sortOrder,
+      })),
+    },
+    select: {
+      name: true,
+      sortOrder: true,
     },
   });
-  if (exists.length === workOrderColumns.length) return;
+
+  const existingColumnKeys = new Set(
+    exists.map((column) => `${column.name}-${column.sortOrder}`),
+  );
+
+  const missingColumns = workOrderColumns.filter(
+    (column) => !existingColumnKeys.has(`${column.name}-${column.sortOrder}`),
+  );
+
+  if (!missingColumns.length) return;
 
   await prisma.workOrderColumn.createMany({
-    data: workOrderColumns.map((column) => ({
+    data: missingColumns.map((column) => ({
       ...column,
       companyId,
       regionalId: null,

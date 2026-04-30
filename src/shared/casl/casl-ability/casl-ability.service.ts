@@ -35,6 +35,9 @@ export type PermissionResource =
       Location: any;
       Asset: any;
       WorkOrder: any;
+      WorkOrderColumn: any;
+      WorkOrderChecklistItem: any;
+      Planning: any;
     }>
   | 'all';
 
@@ -222,6 +225,89 @@ function aplicarRestricoesRegionaisNaoAdmin(user: User, { cannot }: any) {
   }
 }
 
+/**
+ * Aplica ocultação em cascata por soft delete na cadeia Mãe -> Filha.
+ * Quando a mãe está deletada logicamente, a filha não pode ser lida/alterada.
+ */
+function aplicarRestricoesSoftDeleteEmCascata({ cannot }: any) {
+  cannot(['read', 'update', 'delete'], 'Regional', {
+    company: { deletedAt: { not: null } },
+  });
+
+  cannot(['read', 'update', 'delete'], 'Location', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      { regional: { deletedAt: { not: null } } },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'Asset', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      { location: { deletedAt: { not: null } } },
+      { location: { regional: { deletedAt: { not: null } } } },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'WorkOrderColumn', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      {
+        AND: [
+          { regionalId: { not: null } },
+          { regional: { deletedAt: { not: null } } },
+        ],
+      },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'Planning', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      { location: { deletedAt: { not: null } } },
+      { location: { regional: { deletedAt: { not: null } } } },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'WorkOrder', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      { location: { deletedAt: { not: null } } },
+      { location: { regional: { deletedAt: { not: null } } } },
+      {
+        AND: [{ columnId: { not: null } }, { column: { deletedAt: { not: null } } }],
+      },
+      {
+        AND: [
+          { planningId: { not: null } },
+          { planning: { deletedAt: { not: null } } },
+        ],
+      },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'WorkOrderChecklistItem', {
+    OR: [
+      { workOrder: { deletedAt: { not: null } } },
+      { workOrder: { company: { deletedAt: { not: null } } } },
+      { workOrder: { location: { deletedAt: { not: null } } } },
+      { workOrder: { location: { regional: { deletedAt: { not: null } } } } },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'User', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      {
+        AND: [
+          { regionalId: { not: null } },
+          { regional: { deletedAt: { not: null } } },
+        ],
+      },
+    ],
+  });
+}
+
 const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
   SYSTEM_ADMIN: (user: User, { can }: any) => {
     can('manage', 'all');
@@ -278,6 +364,7 @@ export class CaslAbilityService {
     }
 
     aplicarRestricoesRegionaisNaoAdmin(user, builder);
+    aplicarRestricoesSoftDeleteEmCascata(builder);
 
     this.ability = builder.build();
     return this.ability;
