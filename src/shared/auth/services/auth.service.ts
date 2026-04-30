@@ -64,7 +64,7 @@ export class AuthService {
       }
     } catch (error) {
       // Logout sempre retorna sucesso, mesmo se o token for inválido
-      console.warn('Logout warning:', error.message);
+      console.warn('Logout warning:', (error as Error).message);
     }
     await this.refreshTokenService.revoke(refreshToken);
   }
@@ -78,7 +78,7 @@ export class AuthService {
         await this.auditService.logLogout(userId, request, 'all');
       }
     } catch (error) {
-      console.warn('Logout all warning:', error.message);
+      console.warn('Logout all warning:', (error as Error).message);
     }
     await this.refreshTokenService.revokeAll(userId);
   }

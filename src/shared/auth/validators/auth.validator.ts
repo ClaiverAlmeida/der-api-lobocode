@@ -69,7 +69,9 @@ export class AuthValidator {
       select: {
         id: true,
         email: true,
+        login: true,
         name: true,
+        phone: true,
         status: true,
         role: true,
         permissions: true,

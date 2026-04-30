@@ -48,6 +48,12 @@ export class AuthController {
     return this.authService.login(loginDto, request);
   }
 
+  @Get('me')
+  @UseGuards(AuthGuard)
+  async me(@Req() request: Request) {
+    return { data: request.user };
+  }
+
   @Post('refresh')
   @Public()
   @UseGuards(RefreshGuard, RateLimitGuard)
@@ -63,7 +69,7 @@ export class AuthController {
       await this.authService.logout(logoutDto.refreshToken, request);
     } catch (error) {
       // Logout sempre retorna sucesso, mesmo se o token for inválido
-      console.warn('Logout warning:', error.message);
+      console.warn('Logout warning:', (error as Error).message);
     }
   }
 

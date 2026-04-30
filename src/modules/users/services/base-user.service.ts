@@ -171,13 +171,19 @@ export class BaseUserService {
     // Prepara dados para atualização (sem permissões)
     const { permissions, ...userData } = updateUserDto;
     const updateData = this.prepararDadosParaUpdate(userData);
+    const emailAtualNormalizado = user?.email?.trim().toLowerCase();
+    const loginAtualNormalizado = user?.login?.trim().toLowerCase();
+    const novoEmailNormalizado = updateData.email?.trim().toLowerCase();
+    const novoLoginNormalizado = updateData.login?.trim().toLowerCase();
 
     // Validações antes de atualizar (excluindo o próprio usuário)
-    if (updateData.email) {
-      await this.validarSeEmailEhUnico(updateData.email, id);
+    if (novoEmailNormalizado && novoEmailNormalizado !== emailAtualNormalizado) {
+      await this.validarSeEmailEhUnico(novoEmailNormalizado, id);
+      updateData.email = novoEmailNormalizado;
     }
-    if (updateData.login) {
-      await this.validarSeLoginEhUnico(updateData.login, id);
+    if (novoLoginNormalizado && novoLoginNormalizado !== loginAtualNormalizado) {
+      await this.validarSeLoginEhUnico(novoLoginNormalizado, id);
+      updateData.login = novoLoginNormalizado;
     }
     // if (updateData.cpf) {
     //   await this.validarSeCPFEhUnico(updateData.cpf, id);
@@ -316,7 +322,15 @@ export class BaseUserService {
    * Valida se email é único
    */
   protected async validarSeEmailEhUnico(email: string, excludeUserId?: string) {
-    return this.userValidator.validarSeEmailEhUnico(email, excludeUserId);
+    const normalizedEmail = email.trim().toLowerCase();
+    const existingUser = await this.userRepository.buscarPrimeiro({
+      email: normalizedEmail,
+      ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+    });
+
+    if (existingUser) {
+      throw new ConflictError('Email já está em uso');
+    }
   }
 
   /**
@@ -326,11 +340,12 @@ export class BaseUserService {
     if (!login) return;
     
     const normalizedLogin = login.trim().toLowerCase();
-    const existingUser = await this.userRepository.buscarPrimeiro({ 
-      login: normalizedLogin 
+    const existingUser = await this.userRepository.buscarPrimeiro({
+      login: normalizedLogin,
+      ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
     });
     
-    if (existingUser && existingUser.id !== excludeUserId) {
+    if (existingUser) {
       throw new ConflictError('Este login já está cadastrado no sistema');
     }
   }

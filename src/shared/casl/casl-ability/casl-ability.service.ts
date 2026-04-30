@@ -59,12 +59,12 @@ export type DefinePermissions = (
 const profilePermissions = {
   ownProfile: (user: User, { can }: any) => {
     can('read', 'User', { companyId: user.companyId });
-    can('update', 'User', ['profilePicture'], { id: user.id });
+    can('update', 'User', ['name', 'email', 'login', 'phone', 'profilePicture'], { id: user.id });
   },
 
   ownProfileExtended: (user: User, { can }: any) => {
     can('read', 'User', { id: user.id });
-    can('update', 'User', ['name', 'profilePicture'], { id: user.id });
+    can('update', 'User', ['name', 'email', 'login', 'phone', 'profilePicture'], { id: user.id });
   },
 };
 
