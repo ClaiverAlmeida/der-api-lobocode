@@ -135,6 +135,34 @@ const specificPermissions = {
   },
 };
 
+const operationalReadScopePermissions = {
+  assetsLocationsRegionalsRead: (user: User, { can }: any) => {
+    can('read', 'Regional', { companyId: user.companyId });
+    can('read', 'Location', { companyId: user.companyId });
+    can('read', 'Asset', { companyId: user.companyId });
+  },
+};
+
+/**
+ * C2C e Equipe de Campo não podem acessar gestão de equipe.
+ * Mantém leitura/edição apenas do próprio perfil.
+ */
+function aplicarRestricaoGestaoEquipe(user: User, { cannot }: any) {
+  cannot('read', 'User', {
+    companyId: user.companyId,
+    NOT: { id: user.id },
+  });
+  cannot('create', 'User', { companyId: user.companyId });
+  cannot('update', 'User', {
+    companyId: user.companyId,
+    NOT: { id: user.id },
+  });
+  cannot('delete', 'User', {
+    companyId: user.companyId,
+    NOT: { id: user.id },
+  });
+}
+
 // ========================================
 // MAPEAMENTO DE ROLES (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: SYSTEM_ADMIN, ADMIN, FISCAL_CAMPO, OPERADOR, INSPETOR_VIA)
 // ========================================
@@ -327,22 +355,24 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     specificPermissions.workOrdersManage(user, { can });
   },
 
-  FIELD_TEAM: (user: User, { can }: any) => {
-    administrativePermissions.companyRead(user, { can });
+  FIELD_TEAM: (user: User, { can, cannot }: any) => {
     profilePermissions.ownProfileExtended(user, { can });
     basicResourcePermissions.readDocuments(user, { can });
-    operationalPermissions.clientManagement(user, { can });
+    operationalReadScopePermissions.assetsLocationsRegionalsRead(user, { can });
     specificPermissions.notifications(user, { can });
     specificPermissions.workOrdersManage(user, { can });
+    aplicarRestricaoGestaoEquipe(user, { cannot });
   },
 
-  C2C: (user: User, { can }: any) => {
+  C2C: (user: User, { can, cannot }: any) => {
     administrativePermissions.companyRead(user, { can });
     profilePermissions.ownProfileExtended(user, { can });
     basicResourcePermissions.readDocuments(user, { can });
     operationalPermissions.clientManagement(user, { can });
+    operationalReadScopePermissions.assetsLocationsRegionalsRead(user, { can });
     specificPermissions.notifications(user, { can });
     specificPermissions.workOrdersManage(user, { can });
+    aplicarRestricaoGestaoEquipe(user, { cannot });
   },
 };
 
