@@ -35,6 +35,9 @@ export type PermissionResource =
       Location: any;
       Asset: any;
       WorkOrder: any;
+      WorkOrderColumn: any;
+      WorkOrderChecklistItem: any;
+      Planning: any;
     }>
   | 'all';
 
@@ -56,12 +59,12 @@ export type DefinePermissions = (
 const profilePermissions = {
   ownProfile: (user: User, { can }: any) => {
     can('read', 'User', { companyId: user.companyId });
-    can('update', 'User', ['profilePicture'], { id: user.id });
+    can('update', 'User', ['name', 'email', 'login', 'phone', 'profilePicture'], { id: user.id });
   },
 
   ownProfileExtended: (user: User, { can }: any) => {
     can('read', 'User', { id: user.id });
-    can('update', 'User', ['name', 'profilePicture'], { id: user.id });
+    can('update', 'User', ['name', 'email', 'login', 'phone', 'profilePicture'], { id: user.id });
   },
 };
 
@@ -131,6 +134,34 @@ const specificPermissions = {
     });
   },
 };
+
+const operationalReadScopePermissions = {
+  assetsLocationsRegionalsRead: (user: User, { can }: any) => {
+    can('read', 'Regional', { companyId: user.companyId });
+    can('read', 'Location', { companyId: user.companyId });
+    can('read', 'Asset', { companyId: user.companyId });
+  },
+};
+
+/**
+ * C2C e Equipe de Campo não podem acessar gestão de equipe.
+ * Mantém leitura/edição apenas do próprio perfil.
+ */
+function aplicarRestricaoGestaoEquipe(user: User, { cannot }: any) {
+  cannot('read', 'User', {
+    companyId: user.companyId,
+    NOT: { id: user.id },
+  });
+  cannot('create', 'User', { companyId: user.companyId });
+  cannot('update', 'User', {
+    companyId: user.companyId,
+    NOT: { id: user.id },
+  });
+  cannot('delete', 'User', {
+    companyId: user.companyId,
+    NOT: { id: user.id },
+  });
+}
 
 // ========================================
 // MAPEAMENTO DE ROLES (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: SYSTEM_ADMIN, ADMIN, FISCAL_CAMPO, OPERADOR, INSPETOR_VIA)
@@ -222,6 +253,89 @@ function aplicarRestricoesRegionaisNaoAdmin(user: User, { cannot }: any) {
   }
 }
 
+/**
+ * Aplica ocultação em cascata por soft delete na cadeia Mãe -> Filha.
+ * Quando a mãe está deletada logicamente, a filha não pode ser lida/alterada.
+ */
+function aplicarRestricoesSoftDeleteEmCascata({ cannot }: any) {
+  cannot(['read', 'update', 'delete'], 'Regional', {
+    company: { deletedAt: { not: null } },
+  });
+
+  cannot(['read', 'update', 'delete'], 'Location', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      { regional: { deletedAt: { not: null } } },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'Asset', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      { location: { deletedAt: { not: null } } },
+      { location: { regional: { deletedAt: { not: null } } } },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'WorkOrderColumn', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      {
+        AND: [
+          { regionalId: { not: null } },
+          { regional: { deletedAt: { not: null } } },
+        ],
+      },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'Planning', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      { location: { deletedAt: { not: null } } },
+      { location: { regional: { deletedAt: { not: null } } } },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'WorkOrder', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      { location: { deletedAt: { not: null } } },
+      { location: { regional: { deletedAt: { not: null } } } },
+      {
+        AND: [{ columnId: { not: null } }, { column: { deletedAt: { not: null } } }],
+      },
+      {
+        AND: [
+          { planningId: { not: null } },
+          { planning: { deletedAt: { not: null } } },
+        ],
+      },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'WorkOrderChecklistItem', {
+    OR: [
+      { workOrder: { deletedAt: { not: null } } },
+      { workOrder: { company: { deletedAt: { not: null } } } },
+      { workOrder: { location: { deletedAt: { not: null } } } },
+      { workOrder: { location: { regional: { deletedAt: { not: null } } } } },
+    ],
+  });
+
+  cannot(['read', 'update', 'delete'], 'User', {
+    OR: [
+      { company: { deletedAt: { not: null } } },
+      {
+        AND: [
+          { regionalId: { not: null } },
+          { regional: { deletedAt: { not: null } } },
+        ],
+      },
+    ],
+  });
+}
+
 const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
   SYSTEM_ADMIN: (user: User, { can }: any) => {
     can('manage', 'all');
@@ -241,22 +355,24 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     specificPermissions.workOrdersManage(user, { can });
   },
 
-  FIELD_TEAM: (user: User, { can }: any) => {
-    administrativePermissions.companyRead(user, { can });
+  FIELD_TEAM: (user: User, { can, cannot }: any) => {
     profilePermissions.ownProfileExtended(user, { can });
     basicResourcePermissions.readDocuments(user, { can });
-    operationalPermissions.clientManagement(user, { can });
+    operationalReadScopePermissions.assetsLocationsRegionalsRead(user, { can });
     specificPermissions.notifications(user, { can });
     specificPermissions.workOrdersManage(user, { can });
+    aplicarRestricaoGestaoEquipe(user, { cannot });
   },
 
-  C2C: (user: User, { can }: any) => {
+  C2C: (user: User, { can, cannot }: any) => {
     administrativePermissions.companyRead(user, { can });
     profilePermissions.ownProfileExtended(user, { can });
     basicResourcePermissions.readDocuments(user, { can });
     operationalPermissions.clientManagement(user, { can });
+    operationalReadScopePermissions.assetsLocationsRegionalsRead(user, { can });
     specificPermissions.notifications(user, { can });
     specificPermissions.workOrdersManage(user, { can });
+    aplicarRestricaoGestaoEquipe(user, { cannot });
   },
 };
 
@@ -278,6 +394,7 @@ export class CaslAbilityService {
     }
 
     aplicarRestricoesRegionaisNaoAdmin(user, builder);
+    aplicarRestricoesSoftDeleteEmCascata(builder);
 
     this.ability = builder.build();
     return this.ability;

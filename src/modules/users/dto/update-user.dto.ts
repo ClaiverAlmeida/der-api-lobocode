@@ -1,11 +1,20 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { BaseUserDto } from './base-user.dto';
 import { PermissionType, Roles } from '@prisma/client';
-import { IsArray, IsEnum, IsOptional } from 'class-validator';
+import { IsArray, IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 import { VALIDATION_MESSAGES } from 'src/shared/common/messages';
 import { IsExpectedRole } from 'src/shared/validators';
 
 export class UpdateUserDto extends PartialType(BaseUserDto) {
+  @IsOptional()
+  @IsString({ message: VALIDATION_MESSAGES.REQUIRED.LOGIN })
+  @MinLength(3, { message: VALIDATION_MESSAGES.LENGTH.LOGIN_MIN })
+  login?: string;
+
+  @IsOptional()
+  @IsEmail({}, { message: VALIDATION_MESSAGES.FORMAT.EMAIL_INVALID })
+  email?: string;
+
   @IsOptional()
   @IsArray({ message: VALIDATION_MESSAGES.FORMAT.ARRAY_INVALID })
   @IsEnum(PermissionType, {

@@ -55,6 +55,7 @@ import { LocationsModule } from './modules/locations/locations.module';
 import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
 import { OperationalDashboardModule } from './modules/operational-dashboard/operational-dashboard.module';
 import { PlanningModule } from './modules/planning/planning.module';
+import { GlobalSearchModule } from './modules/global-search/global-search.module';
 //javascript es7
 
 @Module({
@@ -83,6 +84,7 @@ import { PlanningModule } from './modules/planning/planning.module';
     WorkOrdersModule,
     OperationalDashboardModule,
     PlanningModule,
+    GlobalSearchModule,
   ],
   controllers: [AppController],
   providers: [

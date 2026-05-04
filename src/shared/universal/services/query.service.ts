@@ -125,8 +125,9 @@ export class UniversalQueryService {
 
       return whereClause;
     } catch (error) {
+      const err = error as { name?: string };
       // Capturar ForbiddenError do CASL e relançar como erro mais específico
-      if (error.name === 'ForbiddenError') {
+      if (err.name === 'ForbiddenError') {
         throw new ForbiddenError(
           ERROR_MESSAGES.AUTHORIZATION.RESOURCE_ACCESS_DENIED,
         );
