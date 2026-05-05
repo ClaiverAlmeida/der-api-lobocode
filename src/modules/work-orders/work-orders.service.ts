@@ -36,6 +36,7 @@ import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { UpdateWorkOrderChecklistItemDto } from './dto/update-work-order-checklist-item.dto';
 import { CreateWorkOrderCheckListDto } from './dto/create-work-order-checklist-item.dto';
 import { MoveWorkOrderColumnDto } from './dto/move-work-order-column.dto';
+import { WorkOrderActivityNotificationService } from '../notifications/shared/work-order-activity-notification.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class WorkOrdersService extends UniversalService<
@@ -139,6 +140,8 @@ export class WorkOrdersService extends UniversalService<
     metricsService: UniversalMetricsService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(FilesService) private readonly filesService: FilesService,
+    @Inject(WorkOrderActivityNotificationService)
+    private readonly workOrderActivityNotificationService: WorkOrderActivityNotificationService,
     @Optional() @Inject(REQUEST) request: any,
   ) {
     const { model, casl } = WorkOrdersService.entityConfig;
@@ -266,6 +269,16 @@ export class WorkOrdersService extends UniversalService<
         ? `Responsável ${responsavel.name} já estava vinculado à OS.`
         : `Responsável ${responsavel.name} adicionado à OS.`,
     );
+
+    if (!jaExiste) {
+      await this.workOrderActivityNotificationService.notifyAssignment({
+        workOrderId: ordem.id,
+        workOrderTitle: (ordem as any).title ?? `OS ${ordem.id}`,
+        actorUserId: this.obterUsuarioLogadoId() ?? responsavel.id,
+        companyId: (ordem as any).companyId ?? this.obterCompanyId() ?? undefined,
+        assignedUserId: responsavel.id,
+      });
+    }
 
     return this.buscarDetalhesPorId(ordem.id);
   }
@@ -607,6 +620,14 @@ export class WorkOrdersService extends UniversalService<
       },
     });
 
+    await this.workOrderActivityNotificationService.notifyNewComment({
+      workOrderId: ordem.id,
+      workOrderTitle: (ordem as any).title ?? `OS ${ordem.id}`,
+      actorUserId: autorId,
+      companyId: (ordem as any).companyId ?? this.obterCompanyId() ?? undefined,
+      assigneeUserIds: ordem.assignees.map((assignee) => assignee.userId),
+    });
+
     return this.buscarDetalhesPorId(ordem.id);
   }
 
@@ -838,6 +859,16 @@ export class WorkOrdersService extends UniversalService<
           data.id,
           `OS atribuída para: ${nomes}.`,
         );
+
+        for (const assignedUserId of this.pendingCreateAssigneeIds) {
+          await this.workOrderActivityNotificationService.notifyAssignment({
+            workOrderId: data.id,
+            workOrderTitle: `OS ${data.id}`,
+            actorUserId: this.obterUsuarioLogadoId() ?? assignedUserId,
+            companyId: this.obterCompanyId() ?? undefined,
+            assignedUserId,
+          });
+        }
       }
 
       this.pendingCreateAssigneeIds = [];

@@ -48,4 +48,20 @@ export class EmailService {
     // Por enquanto, apenas loga a ação
     // Em produção, integrar com serviço de email real
   }
+
+  /**
+   * Envia email de notificação de atividade/sistema.
+   */
+  async sendNotificationEmail(
+    email: string,
+    name: string,
+    subject: string,
+    message: string,
+  ): Promise<void> {
+    // TODO: Implementar integração com serviço de email real
+    this.logger.log(
+      `Email de notificação enviado para ${email} (${name}) - assunto: ${subject}`,
+    );
+    this.logger.debug(`Conteúdo: ${message}`);
+  }
 } 
