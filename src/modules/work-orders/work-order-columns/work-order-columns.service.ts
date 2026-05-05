@@ -120,6 +120,56 @@ export class WorkOrderColumnsService extends UniversalService<
     await this.reordenarSortOrderDaEmpresa(companyId);
   }
 
+  async reorderColumns(orderedIds: string[]) {
+    const companyId = this.obterCompanyId();
+    if (!companyId) {
+      throw new BadRequestException('Empresa do usuário não encontrada.');
+    }
+
+    const uniqueOrderedIds = Array.from(
+      new Set(orderedIds.map((id) => id?.trim()).filter(Boolean)),
+    );
+    if (uniqueOrderedIds.length === 0) {
+      throw new BadRequestException('Informe ao menos uma coluna para reordenação.');
+    }
+
+    const columns = await this.repository.buscarMuitos(
+      this.entityName,
+      {
+        isArchived: false,
+        deletedAt: null,
+        companyId,
+      },
+      { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+    );
+
+    const byId = new Map(columns.map((column) => [String(column.id), column]));
+    const allProvidedExist = uniqueOrderedIds.every((id) => byId.has(id));
+    if (!allProvidedExist) {
+      throw new BadRequestException(
+        'Uma ou mais colunas informadas não existem para a empresa.',
+      );
+    }
+
+    const providedSet = new Set(uniqueOrderedIds);
+    const tailIds = columns
+      .map((column) => String(column.id))
+      .filter((id) => !providedSet.has(id));
+    const finalOrderIds = [...uniqueOrderedIds, ...tailIds];
+
+    await Promise.all(
+      finalOrderIds.map((id, index) =>
+        this.repository.atualizar(
+          this.entityName,
+          { id },
+          { sortOrder: index + 1 } as any,
+        ),
+      ),
+    );
+
+    return { message: 'Ordem das colunas atualizada com sucesso.' };
+  }
+
   private async reordenarSortOrderDaEmpresa(companyId: string) {
     const columns = await this.repository.buscarMuitos(
       this.entityName,
