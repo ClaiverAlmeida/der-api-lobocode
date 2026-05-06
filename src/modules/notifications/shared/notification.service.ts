@@ -6,7 +6,7 @@ import {
   NotificationFilters,
 } from './notification.types';
 import { NotificationGateway } from '../notification.gateway';
-import { PushNotificationService } from './push-notification.service';
+import { NotificationChannelDeliveryService } from './notification-channel-delivery.service';
 
 @Injectable()
 export class NotificationService {
@@ -14,7 +14,7 @@ export class NotificationService {
     private prisma: PrismaService,
     @Inject(forwardRef(() => NotificationGateway))
     private notificationGateway: NotificationGateway,
-    private pushNotificationService: PushNotificationService,
+    private readonly notificationChannelDeliveryService: NotificationChannelDeliveryService,
   ) {}
 
   // ============================================================================
@@ -308,41 +308,11 @@ export class NotificationService {
     companyId?: string,
   ): Promise<void> {
     try {
-      // Enviar para usuários específicos (WebSocket - quando app está aberto)
-      await this.notificationGateway.enviarParaUsuarios(
-        targetUserIds,
+      await this.notificationChannelDeliveryService.entregar(
         notification,
-      );
-
-      // Enviar para sala da empresa (se existir)
-      if (companyId) {
-        await this.notificationGateway.enviarParaSala(
-          `company_${companyId}`,
-          notification,
-        );
-      }
-
-      // Enviar push notifications (quando app está fechado)
-      await this.pushNotificationService.sendPushNotificationToUsers(
         targetUserIds,
-        {
-          title: notification.title,
-          body: notification.message,
-          icon: '/src/assets/der-logo.png',
-          badge: '/src/assets/der-logo.png',
-          data: {
-            entityType: notification.entityType,
-            entityId: notification.entityId,
-            notificationId: notification.id,
-            url: '/notifications',
-          },
-        },
+        companyId,
       );
-
-      // Atualizar contadores de não lidas para todos os destinatários
-      for (const userId of targetUserIds) {
-        await this.notificationGateway.atualizarContadorNaoLidas(userId);
-      }
     } catch (error) {
       console.error('Erro ao enviar notificação em tempo real:', error);
     }

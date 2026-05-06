@@ -36,6 +36,7 @@ import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { UpdateWorkOrderChecklistItemDto } from './dto/update-work-order-checklist-item.dto';
 import { CreateWorkOrderCheckListDto } from './dto/create-work-order-checklist-item.dto';
 import { MoveWorkOrderColumnDto } from './dto/move-work-order-column.dto';
+import { WorkOrderActivityNotificationService } from '../notifications/shared/work-order-activity-notification.service';
 
 @Injectable({ scope: Scope.REQUEST })
 export class WorkOrdersService extends UniversalService<
@@ -139,6 +140,8 @@ export class WorkOrdersService extends UniversalService<
     metricsService: UniversalMetricsService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(FilesService) private readonly filesService: FilesService,
+    @Inject(WorkOrderActivityNotificationService)
+    private readonly workOrderActivityNotificationService: WorkOrderActivityNotificationService,
     @Optional() @Inject(REQUEST) request: any,
   ) {
     const { model, casl } = WorkOrdersService.entityConfig;
@@ -267,6 +270,16 @@ export class WorkOrdersService extends UniversalService<
         : `Responsável ${responsavel.name} adicionado à OS.`,
     );
 
+    if (!jaExiste) {
+      await this.workOrderActivityNotificationService.notifyAssignment({
+        workOrderId: ordem.id,
+        workOrderTitle: (ordem as any).title ?? `OS ${ordem.id}`,
+        actorUserId: this.obterUsuarioLogadoId() ?? responsavel.id,
+        companyId: (ordem as any).companyId ?? this.obterCompanyId() ?? undefined,
+        assignedUserId: responsavel.id,
+      });
+    }
+
     return this.buscarDetalhesPorId(ordem.id);
   }
 
@@ -342,13 +355,18 @@ export class WorkOrdersService extends UniversalService<
       );
     }
 
-    if (ordem.status === WorkOrderStatus.COMPLETED) {
-      throw new BadRequestException('A ordem de serviço já foi concluída.');
-    }
-
     if (ordem.status === WorkOrderStatus.CANCELLED) {
       throw new BadRequestException(
         'Não é possível iniciar uma ordem cancelada.',
+      );
+    }
+
+    if (
+      ordem.status !== WorkOrderStatus.PENDING &&
+      ordem.status !== WorkOrderStatus.ASSIGNED
+    ) {
+      throw new BadRequestException(
+        'A OS só pode ser iniciada a partir dos status pendente/atribuída.',
       );
     }
 
@@ -356,6 +374,8 @@ export class WorkOrdersService extends UniversalService<
       where: { id: ordem.id },
       data: {
         status: WorkOrderStatus.IN_PROGRESS,
+        startedAt: ordem.startedAt ?? new Date(),
+        completedAt: null,
         updatedBy: this.obterUsuarioLogadoId() ?? undefined,
         slaStatus: this.calcularSlaStatus(
           ordem.dueDate,
@@ -383,6 +403,7 @@ export class WorkOrdersService extends UniversalService<
       where: { id: ordem.id },
       data: {
         status: WorkOrderStatus.COMPLETED,
+        completedAt: new Date(),
         updatedBy: this.obterUsuarioLogadoId() ?? undefined,
         slaStatus: WorkOrderSlaStatus.OK,
       },
@@ -458,12 +479,26 @@ export class WorkOrdersService extends UniversalService<
     }
 
     const novoStatus = this.obterStatusPorNomeDaColuna(nomeColunaDestino);
+    const agora = new Date();
 
     await this.prisma.workOrder.update({
       where: { id: ordem.id },
       data: {
         columnId,
         status: novoStatus,
+        startedAt:
+          novoStatus === WorkOrderStatus.IN_PROGRESS &&
+          (ordem.status === WorkOrderStatus.PENDING ||
+            ordem.status === WorkOrderStatus.ASSIGNED) &&
+          !ordem.startedAt
+            ? agora
+            : undefined,
+        completedAt:
+          novoStatus === WorkOrderStatus.COMPLETED
+            ? agora
+            : ordem.status === WorkOrderStatus.COMPLETED
+              ? null
+              : undefined,
         slaStatus: this.calcularSlaStatus(ordem.dueDate ?? null, novoStatus),
         updatedBy: this.obterUsuarioLogadoId() ?? undefined,
       },
@@ -607,6 +642,14 @@ export class WorkOrdersService extends UniversalService<
       },
     });
 
+    await this.workOrderActivityNotificationService.notifyNewComment({
+      workOrderId: ordem.id,
+      workOrderTitle: (ordem as any).title ?? `OS ${ordem.id}`,
+      actorUserId: autorId,
+      companyId: (ordem as any).companyId ?? this.obterCompanyId() ?? undefined,
+      assigneeUserIds: ordem.assignees.map((assignee) => assignee.userId),
+    });
+
     return this.buscarDetalhesPorId(ordem.id);
   }
 
@@ -739,6 +782,16 @@ export class WorkOrdersService extends UniversalService<
     data: UpdateWorkOrderDto,
   ): Promise<void> {
     this.pendingUpdateAssigneeIds = null;
+    const companyId = this.obterCompanyId();
+    const ordemAtual = await this.repository.buscarPrimeiro('workOrder', {
+      id: _id,
+      deletedAt: null,
+      ...(companyId && { companyId }),
+    });
+
+    if (!ordemAtual) {
+      throw new NotFoundException('Ordem de serviço não encontrada.');
+    }
 
     if (data.locationId) {
       await this.buscarLocalidadeValida(data.locationId);
@@ -766,19 +819,13 @@ export class WorkOrdersService extends UniversalService<
       );
       delete (data as any).assignedToUserIds;
       if (!data.status) {
-        const companyId = this.obterCompanyId();
-        const ordem = await this.repository.buscarPrimeiro('workOrder', {
-          id: _id,
-          deletedAt: null,
-          ...(companyId && { companyId }),
-        });
         if (
-          ordem?.status === WorkOrderStatus.PENDING &&
+          ordemAtual.status === WorkOrderStatus.PENDING &&
           this.pendingUpdateAssigneeIds.length > 0
         ) {
           data.status = WorkOrderStatus.ASSIGNED;
         } else if (
-          ordem?.status === WorkOrderStatus.ASSIGNED &&
+          ordemAtual.status === WorkOrderStatus.ASSIGNED &&
           this.pendingUpdateAssigneeIds.length === 0
         ) {
           data.status = WorkOrderStatus.PENDING;
@@ -787,8 +834,25 @@ export class WorkOrdersService extends UniversalService<
     }
 
     if (data.status === WorkOrderStatus.COMPLETED) {
+      (data as any).completedAt = new Date();
       data.slaStatus = WorkOrderSlaStatus.OK;
       return;
+    }
+
+    if (
+      data.status === WorkOrderStatus.IN_PROGRESS &&
+      (ordemAtual.status === WorkOrderStatus.PENDING ||
+        ordemAtual.status === WorkOrderStatus.ASSIGNED) &&
+      !ordemAtual.startedAt
+    ) {
+      (data as any).startedAt = new Date();
+    }
+
+    if (
+      data.status &&
+      ordemAtual.status === WorkOrderStatus.COMPLETED
+    ) {
+      (data as any).completedAt = null;
     }
 
     if (data.dueDate || data.status) {
@@ -838,6 +902,16 @@ export class WorkOrdersService extends UniversalService<
           data.id,
           `OS atribuída para: ${nomes}.`,
         );
+
+        for (const assignedUserId of this.pendingCreateAssigneeIds) {
+          await this.workOrderActivityNotificationService.notifyAssignment({
+            workOrderId: data.id,
+            workOrderTitle: `OS ${data.id}`,
+            actorUserId: this.obterUsuarioLogadoId() ?? assignedUserId,
+            companyId: this.obterCompanyId() ?? undefined,
+            assignedUserId,
+          });
+        }
       }
 
       this.pendingCreateAssigneeIds = [];

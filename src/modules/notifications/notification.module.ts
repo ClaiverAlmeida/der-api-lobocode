@@ -7,6 +7,9 @@ import { NotificationController } from './notification.controller';
 import { NotificationHelper } from './notification.helper';
 import { NotificationGateway } from './notification.gateway';
 import { NotificationRecipientsService } from './shared/notification.recipients';
+import { ActivityNotificationPreferencesService } from './shared/activity-notification-preferences.service';
+import { WorkOrderActivityNotificationService } from './shared/work-order-activity-notification.service';
+import { NotificationChannelDeliveryService } from './shared/notification-channel-delivery.service';
 
 /**
  * 🔔 MÓDULO GLOBAL DE NOTIFICAÇÕES
@@ -33,6 +36,9 @@ import { NotificationRecipientsService } from './shared/notification.recipients'
     NotificationHelper,
     NotificationGateway,
     NotificationRecipientsService,
+    ActivityNotificationPreferencesService,
+    WorkOrderActivityNotificationService,
+    NotificationChannelDeliveryService,
   ],
   exports: [
     NotificationService,
@@ -40,6 +46,9 @@ import { NotificationRecipientsService } from './shared/notification.recipients'
     NotificationHelper,
     NotificationGateway,
     NotificationRecipientsService,
+    ActivityNotificationPreferencesService,
+    WorkOrderActivityNotificationService,
+    NotificationChannelDeliveryService,
   ],
 })
 export class NotificationModule {}
