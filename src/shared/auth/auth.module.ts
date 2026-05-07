@@ -27,6 +27,7 @@ import { MicrosoftStrategy } from './strategies/microsoft.strategy';
 import { MeCompanyService } from './services/me-company.service';
 import { MeNotificationPreferencesService } from './services/me-notification-preferences.service';
 import { RoleGuard } from './guards/role.guard';
+import { OAuthRedirectExceptionFilter } from './filters/oauth-redirect-exception.filter';
 
 @Global()
 @Module({
@@ -75,6 +76,7 @@ import { RoleGuard } from './guards/role.guard';
     MeCompanyService,
     MeNotificationPreferencesService,
     RoleGuard,
+    OAuthRedirectExceptionFilter,
   ],
   exports: [
     JwtModule,
