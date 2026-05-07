@@ -9,6 +9,7 @@ import {
   Query,
   Req,
   Res,
+  UseFilters,
 } from '@nestjs/common';
 import {
   LoginDto,
@@ -39,9 +40,14 @@ import { MeNotificationPreferencesService } from './services/me-notification-pre
 import { UpdateMyCompanyDto } from './dto/update-my-company.dto';
 import { UpdateMyNotificationPreferencesDto } from './dto/update-my-notification-preferences.dto';
 import { toPublicMeUser } from './auth-me.mapper';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { MicrosoftStrategy } from './strategies/microsoft.strategy';
+import { OAuthRedirectExceptionFilter } from './filters/oauth-redirect-exception.filter';
 
 @Controller('auth')
 export class AuthController {
+  private static readonly OAUTH_FRONTEND_COOKIE = 'oauth_frontend_url';
+
   constructor(
     private readonly authService: AuthService,
     private readonly passwordResetService: PasswordResetService,
@@ -51,7 +57,78 @@ export class AuthController {
     private readonly configService: ConfigService,
     private readonly meCompanyService: MeCompanyService,
     private readonly meNotificationPreferencesService: MeNotificationPreferencesService,
+    // Garante registro das strategies no Passport sem falhar no bootstrap.
+    private readonly googleStrategy: GoogleStrategy,
+    private readonly microsoftStrategy: MicrosoftStrategy,
   ) {}
+
+  private normalizeFrontendOrigin(rawUrl: string | undefined): string | null {
+    if (!rawUrl) return null;
+
+    try {
+      const parsed = new URL(rawUrl);
+      if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+      return parsed.origin;
+    } catch {
+      return null;
+    }
+  }
+
+  private isAllowedFrontendOrigin(origin: string, fallbackOrigin: string): boolean {
+    if (origin === fallbackOrigin) return true;
+
+    try {
+      const parsed = new URL(origin);
+      return (
+        parsed.hostname === 'localhost' ||
+        parsed.hostname === '127.0.0.1' ||
+        parsed.hostname === '[::1]'
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  private extractCookieValue(req: Request, cookieName: string): string | null {
+    const cookieHeader = req.headers.cookie;
+    if (!cookieHeader) return null;
+
+    const cookies = cookieHeader.split(';');
+    for (const cookie of cookies) {
+      const [name, ...valueParts] = cookie.trim().split('=');
+      if (name !== cookieName) continue;
+      return decodeURIComponent(valueParts.join('='));
+    }
+
+    return null;
+  }
+
+  private resolveOAuthFrontendUrl(req: Request): string {
+    const fallbackUrl = this.configService.get<string>(
+      'FRONTEND_URL',
+      'http://localhost:3111',
+    );
+    const fallbackOrigin =
+      this.normalizeFrontendOrigin(fallbackUrl) ?? 'http://localhost:3111';
+
+    const cookieOrigin = this.normalizeFrontendOrigin(
+      this.extractCookieValue(req, AuthController.OAUTH_FRONTEND_COOKIE) ?? undefined,
+    );
+
+    if (cookieOrigin && this.isAllowedFrontendOrigin(cookieOrigin, fallbackOrigin)) {
+      return cookieOrigin;
+    }
+
+    return fallbackOrigin;
+  }
+
+  private clearOAuthFrontendCookie(res: Response): void {
+    res.clearCookie(AuthController.OAUTH_FRONTEND_COOKIE, {
+      path: '/',
+      sameSite: 'lax',
+      secure: false,
+    });
+  }
 
   @Post('login')
   @Public()
@@ -250,6 +327,23 @@ export class AuthController {
 
   // ─── OAuth Google ────────────────────────────────────────────────────────────
 
+  @Get('google/start')
+  @Public()
+  iniciarFluxoGoogleComFrontend(@Query('frontend_url') frontendUrl: string | undefined, @Res() res: Response): void {
+    const parsed = this.normalizeFrontendOrigin(frontendUrl);
+    if (parsed) {
+      res.cookie(AuthController.OAUTH_FRONTEND_COOKIE, parsed, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: false,
+        maxAge: 10 * 60 * 1000,
+        path: '/',
+      });
+    }
+
+    res.redirect('/auth/google');
+  }
+
   @Get('google')
   @Public()
   @UseGuards(PassportAuthGuard('google'))
@@ -259,11 +353,13 @@ export class AuthController {
 
   @Get('google/callback')
   @Public()
+  @UseFilters(OAuthRedirectExceptionFilter)
   @UseGuards(PassportAuthGuard('google'))
   async callbackGoogle(@Req() req: Request, @Res() res: Response): Promise<void> {
     const user = req.user as any;
-    const tokens = this.oauthService.gerarTokensOAuth(user);
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
+    const tokens = this.oauthService.gerarTokensOAuth(user, req, 'google');
+    const frontendUrl = this.resolveOAuthFrontendUrl(req);
+    this.clearOAuthFrontendCookie(res);
 
     const params = new URLSearchParams({
       access_token: tokens.access_token,
@@ -277,6 +373,23 @@ export class AuthController {
 
   // ─── OAuth Microsoft ─────────────────────────────────────────────────────────
 
+  @Get('microsoft/start')
+  @Public()
+  iniciarFluxoMicrosoftComFrontend(@Query('frontend_url') frontendUrl: string | undefined, @Res() res: Response): void {
+    const parsed = this.normalizeFrontendOrigin(frontendUrl);
+    if (parsed) {
+      res.cookie(AuthController.OAUTH_FRONTEND_COOKIE, parsed, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: false,
+        maxAge: 10 * 60 * 1000,
+        path: '/',
+      });
+    }
+
+    res.redirect('/auth/microsoft');
+  }
+
   @Get('microsoft')
   @Public()
   @UseGuards(PassportAuthGuard('microsoft'))
@@ -286,11 +399,13 @@ export class AuthController {
 
   @Get('microsoft/callback')
   @Public()
+  @UseFilters(OAuthRedirectExceptionFilter)
   @UseGuards(PassportAuthGuard('microsoft'))
   async callbackMicrosoft(@Req() req: Request, @Res() res: Response): Promise<void> {
     const user = req.user as any;
-    const tokens = this.oauthService.gerarTokensOAuth(user);
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:5173');
+    const tokens = this.oauthService.gerarTokensOAuth(user, req, 'microsoft');
+    const frontendUrl = this.resolveOAuthFrontendUrl(req);
+    this.clearOAuthFrontendCookie(res);
 
     const params = new URLSearchParams({
       access_token: tokens.access_token,

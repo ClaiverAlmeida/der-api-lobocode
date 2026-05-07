@@ -39,7 +39,6 @@ import { AuthGuard } from '../../shared/auth/guards/auth.guard';
       'http://31.97.166.94', // Nginx proxy
       'https://31.97.166.94',
       'http://localhost:4200',
-      'http://localhost:5173',
       'http://localhost:5174',
       'http://localhost:3001',
       'http://localhost:3002',

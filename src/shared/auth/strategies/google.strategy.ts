@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
@@ -14,17 +14,23 @@ export interface GoogleProfile {
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
+  private readonly logger = new Logger(GoogleStrategy.name);
+
   constructor(
     private readonly configService: ConfigService,
     private readonly oauthService: OAuthService,
   ) {
+    const clientID = configService.get<string>('GOOGLE_CLIENT_ID', '');
+    const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET', '');
+    const callbackURL = configService.get<string>(
+      'GOOGLE_CALLBACK_URL',
+      'http://localhost:3000/auth/google/callback',
+    );
+
     super({
-      clientID: configService.get<string>('GOOGLE_CLIENT_ID', ''),
-      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET', ''),
-      callbackURL: configService.get<string>(
-        'GOOGLE_CALLBACK_URL',
-        'http://localhost:3011/auth/google/callback',
-      ),
+      clientID,
+      clientSecret,
+      callbackURL,
       scope: ['email', 'profile'],
     });
   }
@@ -35,6 +41,11 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: GoogleProfile,
     done: VerifyCallback,
   ): Promise<void> {
+    if (!this.configService.get<string>('GOOGLE_CLIENT_ID') || !this.configService.get<string>('GOOGLE_CLIENT_SECRET')) {
+      done(new Error('Google OAuth configuration is missing'));
+      return;
+    }
+
     const { id, displayName, emails, photos } = profile;
     const email = emails?.[0]?.value;
     const picture = photos?.[0]?.value;

@@ -1,12 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CaslAbilityService } from '../../casl/casl-ability/casl-ability.service';
 import { packRules } from '@casl/ability/extra';
 import { RefreshTokenService } from './refresh-token.service';
+import { AuditService } from './audit.service';
 import { IAuthResponse, ITokenPayload } from '../interfaces';
-import { Roles, UserStatus } from '@prisma/client';
-import { randomUUID } from 'crypto';
+import { UserStatus } from '@prisma/client';
+import { Request } from 'express';
 
 export interface OAuthUserData {
   provider: 'google' | 'microsoft';
@@ -27,16 +28,35 @@ export class OAuthService {
     private readonly jwtService: JwtService,
     private readonly abilityService: CaslAbilityService,
     private readonly refreshTokenService: RefreshTokenService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
-   * Busca ou cria um usuário a partir de credenciais OAuth.
-   * 1. Busca OAuthAccount existente → retorna usuário vinculado
-   * 2. Busca User por email → vincula conta OAuth existente
-   * 3. Cria novo User + OAuthAccount com status PENDING (aguarda aprovação)
+   * Realiza login OAuth apenas para usuários já cadastrados.
+   * 1. Valida existência de User por email
+   * 2. Busca OAuthAccount existente e atualiza tokens
+   * 3. Se não existir OAuthAccount, vincula provider ao User existente
    */
   async buscarOuCriarUserPorOAuth(data: OAuthUserData) {
-    const { provider, providerId, email, name, picture, accessToken, refreshToken } = data;
+    const { provider, providerId, picture, accessToken, refreshToken } = data;
+    const normalizedEmail = data.email?.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      throw new UnauthorizedException(
+        `Não foi possível identificar o email da conta ${provider.charAt(0).toUpperCase() + provider.slice(1)}.`,
+      );
+    }
+
+    const userExistente = await this.prisma.user.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      include: { permissions: true },
+    });
+
+    if(!userExistente || userExistente.status !== UserStatus.ACTIVE || userExistente.deletedAt) {
+      throw new UnauthorizedException(
+        `Usuário não encontrado no sistema para a realização do login via ${provider.charAt(0).toUpperCase() + provider.slice(1)}.`,
+      );
+    }
 
     const contaExistente = await this.prisma.oAuthAccount.findUnique({
       where: { provider_providerId: { provider, providerId } },
@@ -44,68 +64,38 @@ export class OAuthService {
     });
 
     if (contaExistente) {
+      if (contaExistente.userId !== userExistente.id) {
+        throw new UnauthorizedException(
+          `Conta OAuth ${provider} já está vinculada a outro usuário na plataforma.`,
+        );
+      }
       await this.prisma.oAuthAccount.update({
         where: { id: contaExistente.id },
-        data: { accessToken, refreshToken, email },
+        data: { accessToken, refreshToken, email: normalizedEmail },
       });
       return contaExistente.user;
     }
 
-    const userExistente = await this.prisma.user.findUnique({
-      where: { email },
-      include: { permissions: true },
+    await this.prisma.oAuthAccount.create({
+      data: {
+        provider,
+        providerId,
+        email: normalizedEmail,
+        accessToken,
+        refreshToken,
+        userId: userExistente.id,
+      },
     });
 
-    if (userExistente) {
-      await this.prisma.oAuthAccount.create({
-        data: {
-          provider,
-          providerId,
-          email,
-          accessToken,
-          refreshToken,
-          userId: userExistente.id,
-        },
+    if (picture && !userExistente.profilePicture) {
+      await this.prisma.user.update({
+        where: { id: userExistente.id },
+        data: { profilePicture: picture },
       });
-
-      if (picture && !userExistente.profilePicture) {
-        await this.prisma.user.update({
-          where: { id: userExistente.id },
-          data: { profilePicture: picture },
-        });
-      }
-
-      this.logger.log(`OAuth vinculado ao usuário existente: ${email} via ${provider}`);
-      return { ...userExistente, profilePicture: picture ?? userExistente.profilePicture };
     }
 
-    const novoLogin = email.split('@')[0] + '_' + randomUUID().substring(0, 6);
-
-    const novoUser = await this.prisma.user.create({
-      data: {
-        name,
-        email,
-        login: novoLogin,
-        password: '',
-        role: Roles.C2C,
-        status: UserStatus.PENDING,
-        profilePicture: picture,
-        oauthAccounts: {
-          create: {
-            provider,
-            providerId,
-            email,
-            accessToken,
-            refreshToken,
-          },
-        },
-        permissions: { create: [] },
-      },
-      include: { permissions: true },
-    });
-
-    this.logger.log(`Novo usuário criado via OAuth (${provider}): ${email} — status PENDING`);
-    return novoUser;
+    this.logger.log(`OAuth vinculado ao usuário existente: ${normalizedEmail} via ${provider}`);
+    return { ...userExistente, profilePicture: picture ?? userExistente.profilePicture };
   }
 
   /**
@@ -114,6 +104,8 @@ export class OAuthService {
    */
   gerarTokensOAuth(
     user: Awaited<ReturnType<OAuthService['buscarOuCriarUserPorOAuth']>>,
+    request?: Request,
+    provider?: OAuthUserData['provider'],
   ): IAuthResponse & { isPending: boolean } {
     const ability = this.abilityService.createForUser(user);
 
@@ -128,6 +120,16 @@ export class OAuthService {
 
     const access_token = this.jwtService.sign(payload);
     const { refresh_token } = this.refreshTokenService.generate(user);
+
+    if (request) {
+      void this.auditService.logLoginSuccess(user.id, request, {
+        role: user.role,
+        companyId: user.companyId,
+        userPermissions: user.permissions.map((permission) => permission.permissionType),
+        authMethod: 'oauth',
+        ...(provider ? { oauthProvider: provider } : {}),
+      });
+    }
 
     return {
       access_token,
