@@ -16,23 +16,52 @@ export interface GoogleProfile {
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   private readonly logger = new Logger(GoogleStrategy.name);
 
+  private static resolveGoogleCallbackUrl(configService: ConfigService): string {
+    const isProduction = configService.get<string>('NODE_ENV') === 'production';
+    const explicitCallback = configService.get<string>('GOOGLE_CALLBACK_URL')?.trim();
+    if (explicitCallback) {
+      const isLocalhostExplicit =
+        explicitCallback.includes('://localhost') ||
+        explicitCallback.includes('://127.0.0.1');
+      if (!isProduction || !isLocalhostExplicit) return explicitCallback;
+    }
+
+    const appHost = configService.get<string>('APP_HOST')?.trim();
+    if (appHost) return `https://${appHost}/auth/google/callback`;
+
+    if (isProduction) {
+      throw new Error(
+        'Google OAuth inválido em produção: defina GOOGLE_CALLBACK_URL HTTPS válido ou APP_HOST.',
+      );
+    }
+
+    return 'http://localhost:3000/auth/google/callback';
+  }
+
   constructor(
     private readonly configService: ConfigService,
     private readonly oauthService: OAuthService,
   ) {
     const clientID = configService.get<string>('GOOGLE_CLIENT_ID', '');
     const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET', '');
-    const callbackURL = configService.get<string>(
-      'GOOGLE_CALLBACK_URL',
-      'http://localhost:3000/auth/google/callback',
-    );
+    const callbackURL = GoogleStrategy.resolveGoogleCallbackUrl(configService);
 
     super({
       clientID,
       clientSecret,
       callbackURL,
+      proxy: true,
       scope: ['email', 'profile'],
     });
+
+    if (
+      configService.get<string>('NODE_ENV') === 'production' &&
+      callbackURL.includes('localhost')
+    ) {
+      this.logger.warn(
+        `GOOGLE_CALLBACK_URL está apontando para localhost em produção: ${callbackURL}`,
+      );
+    }
   }
 
   async validate(

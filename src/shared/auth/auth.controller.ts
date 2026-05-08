@@ -123,10 +123,11 @@ export class AuthController {
   }
 
   private clearOAuthFrontendCookie(res: Response): void {
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
     res.clearCookie(AuthController.OAUTH_FRONTEND_COOKIE, {
       path: '/',
       sameSite: 'lax',
-      secure: false,
+      secure: isProduction,
     });
   }
 
@@ -329,13 +330,17 @@ export class AuthController {
 
   @Get('google/start')
   @Public()
-  iniciarFluxoGoogleComFrontend(@Query('frontend_url') frontendUrl: string | undefined, @Res() res: Response): void {
+  iniciarFluxoGoogleComFrontend(
+    @Query('frontend_url') frontendUrl: string | undefined,
+    @Res() res: Response,
+  ): void {
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
     const parsed = this.normalizeFrontendOrigin(frontendUrl);
     if (parsed) {
       res.cookie(AuthController.OAUTH_FRONTEND_COOKIE, parsed, {
         httpOnly: true,
         sameSite: 'lax',
-        secure: false,
+        secure: isProduction,
         maxAge: 10 * 60 * 1000,
         path: '/',
       });
@@ -375,13 +380,17 @@ export class AuthController {
 
   @Get('microsoft/start')
   @Public()
-  iniciarFluxoMicrosoftComFrontend(@Query('frontend_url') frontendUrl: string | undefined, @Res() res: Response): void {
+  iniciarFluxoMicrosoftComFrontend(
+    @Query('frontend_url') frontendUrl: string | undefined,
+    @Res() res: Response,
+  ): void {
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
     const parsed = this.normalizeFrontendOrigin(frontendUrl);
     if (parsed) {
       res.cookie(AuthController.OAUTH_FRONTEND_COOKIE, parsed, {
         httpOnly: true,
         sameSite: 'lax',
-        secure: false,
+        secure: isProduction,
         maxAge: 10 * 60 * 1000,
         path: '/',
       });

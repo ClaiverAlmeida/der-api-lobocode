@@ -113,10 +113,11 @@ export class OAuthRedirectExceptionFilter implements ExceptionFilter {
   }
 
   private clearOAuthFrontendCookie(res: Response): void {
+    const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
     res.clearCookie('oauth_frontend_url', {
       path: '/',
       sameSite: 'lax',
-      secure: false,
+      secure: isProduction,
     });
   }
 }
