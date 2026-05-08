@@ -22,12 +22,17 @@ export class UserFactory {
       typeof dto.regionalId === 'string' && dto.regionalId.trim()
         ? dto.regionalId.trim()
         : undefined;
+    const userFunction =
+      typeof dto.function === 'string' && dto.function.trim()
+        ? dto.function.trim()
+        : undefined;
 
     return {
       name: dto.name,
       login: dto.login.trim().toLowerCase(),
       email: dto.email.trim().toLowerCase(),
       phone: dto?.phone,
+      function: userFunction,
       profilePicture: dto?.profilePicture,
       status: dto?.status,
       password: this.criptografarPassword(dto.password),
