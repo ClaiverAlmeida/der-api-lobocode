@@ -13,7 +13,7 @@ COMPOSE_FILE="${VPS_APP_COMPOSE_FILE:-docker/docker-compose.vps-app.yml}"
 TRAEFIK_NETWORK="${TRAEFIK_NETWORK:-}"
 APP_HOST="${APP_HOST:-}"
 APP_HOST_EXAMPLE="${APP_HOST_EXAMPLE:-api.exemplo.com}"
-AUTO_DB_INIT_ON_DEPLOY="${AUTO_DB_INIT_ON_DEPLOY:-true}"
+AUTO_DB_SYNC_ON_DEPLOY="${AUTO_DB_SYNC_ON_DEPLOY:-${AUTO_DB_INIT_ON_DEPLOY:-true}}"
 
 if [ -z "${COMPOSE_VPS_STACK_NAME:-}" ]; then
   echo "Defina COMPOSE_VPS_STACK_NAME no ${ENV_FILE}"
@@ -60,11 +60,11 @@ docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" config >/dev/null
 
 echo "Iniciando stack ${COMPOSE_VPS_STACK_NAME}..."
 docker compose --env-file "${ENV_FILE}" -p "${COMPOSE_VPS_STACK_NAME}" -f "${COMPOSE_FILE}" up -d --build
-if [ "${AUTO_DB_INIT_ON_DEPLOY}" = "true" ]; then
-  echo "Inicializando banco (migrate/push + seed)..."
+if [ "${AUTO_DB_SYNC_ON_DEPLOY}" = "true" ]; then
+  echo "Sincronizando banco (generate + migrate/push + seed)..."
   ./scripts/vps/seed-database.sh
 else
-  echo "AUTO_DB_INIT_ON_DEPLOY=false: inicialização de banco ignorada."
+  echo "AUTO_DB_SYNC_ON_DEPLOY=false: sincronização de banco ignorada."
 fi
 
 echo ""

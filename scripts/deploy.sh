@@ -27,6 +27,7 @@ show_help() {
   echo "  vps-service  - Um serviço do compose vps-app (ex.: backend)"
   echo "  database     - Postgres + Redis + MinIO (compose database)"
   echo "  minio        - Só MinIO (via start-database.sh minio)"
+  echo "  sync-db      - Gera cliente Prisma + migra/sincroniza + seed"
   echo "  help"
   echo ""
   echo "Exemplos:"
@@ -36,6 +37,7 @@ show_help() {
   echo "  APP_HOST=${example_host} ./scripts/deploy.sh vps-backend"
   echo "  ./scripts/deploy.sh vps-service ${example_service}"
   echo "  ./scripts/deploy.sh database"
+  echo "  ./scripts/deploy.sh sync-db"
 }
 
 check_directory() {
@@ -69,6 +71,10 @@ start_minio_only() {
   ./scripts/start-database.sh minio
 }
 
+sync_database() {
+  ./scripts/vps/seed-database.sh
+}
+
 check_directory
 
 case "${1:-help}" in
@@ -89,6 +95,9 @@ case "${1:-help}" in
     ;;
   minio)
     start_minio_only
+    ;;
+  sync-db)
+    sync_database
     ;;
   help|--help|-h)
     show_help
