@@ -16,6 +16,10 @@ async function bootstrap() {
       cors: true,
     });
     const logger = app.get(CustomLoggerService);
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Necessário para respeitar x-forwarded-proto/host atrás de proxy (Traefik/Nginx)
+    app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
     // CRITICAL: Configurar WebSocket adapter ANTES de qualquer outra coisa
     app.useWebSocketAdapter(new IoAdapter(app));
@@ -26,7 +30,11 @@ async function bootstrap() {
         secret: process.env.JWT_SECRET ?? 'oauth-session-secret',
         resave: false,
         saveUninitialized: false,
-        cookie: { secure: false, maxAge: 10 * 60 * 1000 }, // 10 min - apenas para OAuth flow
+        cookie: {
+          secure: isProduction,
+          sameSite: 'lax',
+          maxAge: 10 * 60 * 1000,
+        }, // 10 min - apenas para OAuth flow
       }),
     );
 
