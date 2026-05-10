@@ -1,0 +1,31 @@
+# Overlay para VPS: HTTPS no mesmo host da API — GET https://APP_HOST/files/<MINIO_BUCKET_NAME>/...
+# encaminha ao MinIO (S3 path-style) após remover o prefixo /files.
+# Pré-requisito: rede externa ${TRAEFIK_NETWORK} (gateway Traefik) já existe.
+#
+# Subir na VPS (com .env da raiz do projeto):
+#   docker compose -f docker-compose.database.yml -f docker-compose.minio-traefik.yml --env-file ../.env up -d
+#
+# Em desenvolvimento local, use só docker-compose.database.yml (sem este arquivo).
+
+services:
+  minio:
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK}
+      - "traefik.http.routers.${VPS_APP_PROJECT_NAME}-minio-files.rule=Host(`${APP_HOST}`) && PathPrefix(`/files/${MINIO_BUCKET_NAME}`)"
+      - traefik.http.routers.${VPS_APP_PROJECT_NAME}-minio-files.priority=100
+      - traefik.http.routers.${VPS_APP_PROJECT_NAME}-minio-files.entrypoints=websecure
+      - traefik.http.routers.${VPS_APP_PROJECT_NAME}-minio-files.tls=true
+      - traefik.http.routers.${VPS_APP_PROJECT_NAME}-minio-files.tls.certresolver=${TRAEFIK_CERT_RESOLVER}
+      - traefik.http.middlewares.${VPS_APP_PROJECT_NAME}-minio-strip.stripprefix.prefixes=/files
+      - traefik.http.routers.${VPS_APP_PROJECT_NAME}-minio-files.middlewares=${VPS_APP_PROJECT_NAME}-minio-strip@docker
+      - traefik.http.routers.${VPS_APP_PROJECT_NAME}-minio-files.service=${VPS_APP_PROJECT_NAME}-minio-files
+      - traefik.http.services.${VPS_APP_PROJECT_NAME}-minio-files.loadbalancer.server.port=9000
+    networks:
+      - stack
+      - edge
+
+networks:
+  edge:
+    name: ${TRAEFIK_NETWORK}
+    external: true

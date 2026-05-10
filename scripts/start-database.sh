@@ -13,6 +13,9 @@ if [ -f "${ENV_FILE}" ]; then
 fi
 
 COMPOSE_FILE="${COMPOSE_FILE:-docker/docker-compose.database.yml}"
+# Na VPS (Traefik): exporte COMPOSE_FILE_EXTRA=docker/docker-compose.minio-traefik.yml
+# para servir arquivos em https://APP_HOST/files/<bucket>/...
+COMPOSE_FILE_EXTRA="${COMPOSE_FILE_EXTRA:-}"
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-90}"
 
 require_var() {
@@ -35,6 +38,11 @@ require_var DB_HOST_PORT
 require_var REDIS_HOST_PORT
 require_var MINIO_API_HOST_PORT
 require_var MINIO_CONSOLE_HOST_PORT
+
+DOCKER_COMPOSE_ARGS=( -p "${COMPOSE_DATABASE_PROJECT_NAME}" -f "${COMPOSE_FILE}" )
+if [ -n "${COMPOSE_FILE_EXTRA}" ]; then
+  DOCKER_COMPOSE_ARGS+=( -f "${COMPOSE_FILE_EXTRA}" )
+fi
 
 if [ "$#" -gt 0 ]; then
   SERVICES=("$@")
@@ -95,6 +103,18 @@ if ! docker network ls --format '{{.Name}}' | grep -Fxq "${DOCKER_NETWORK_NAME}"
   docker network create --driver bridge "${DOCKER_NETWORK_NAME}" >/dev/null
 fi
 
+if [ -n "${COMPOSE_FILE_EXTRA}" ]; then
+  require_var TRAEFIK_NETWORK
+  require_var VPS_APP_PROJECT_NAME
+  require_var APP_HOST
+  require_var MINIO_BUCKET_NAME
+  require_var TRAEFIK_CERT_RESOLVER
+  if ! docker network ls --format '{{.Name}}' | grep -Fxq "${TRAEFIK_NETWORK}"; then
+    echo "Rede Traefik '${TRAEFIK_NETWORK}' não existe. Suba o gateway (./scripts/deploy.sh vps-gateway) ou crie a rede."
+    exit 1
+  fi
+fi
+
 if contains_service "db" "${SERVICES[@]}"; then
   if ! docker volume inspect "${POSTGRES_VOLUME_NAME}" >/dev/null 2>&1; then
     echo "Criando volume externo: ${POSTGRES_VOLUME_NAME}"
@@ -103,7 +123,7 @@ if contains_service "db" "${SERVICES[@]}"; then
 fi
 
 echo "docker compose up -d ${SERVICES[*]}..."
-docker compose -p "${COMPOSE_DATABASE_PROJECT_NAME}" -f "${COMPOSE_FILE}" up -d "${SERVICES[@]}"
+docker compose "${DOCKER_COMPOSE_ARGS[@]}" up -d "${SERVICES[@]}"
 
 if contains_service "db" "${SERVICES[@]}"; then
   echo "Aguardando PostgreSQL healthy..."
@@ -117,7 +137,7 @@ if contains_service "db" "${SERVICES[@]}"; then
     elapsed="$((now - start_time))"
     if [ "${elapsed}" -ge "${WAIT_TIMEOUT_SECONDS}" ]; then
       echo "Timeout aguardando PostgreSQL."
-      docker compose -p "${COMPOSE_DATABASE_PROJECT_NAME}" -f "${COMPOSE_FILE}" ps
+      docker compose "${DOCKER_COMPOSE_ARGS[@]}" ps
       exit 1
     fi
     sleep 2
@@ -125,7 +145,7 @@ if contains_service "db" "${SERVICES[@]}"; then
 fi
 
 echo "Status:"
-docker compose -p "${COMPOSE_DATABASE_PROJECT_NAME}" -f "${COMPOSE_FILE}" ps
+docker compose "${DOCKER_COMPOSE_ARGS[@]}" ps
 echo ""
 echo "PostgreSQL: localhost:${DB_HOST_PORT} | Redis: localhost:${REDIS_HOST_PORT}"
 echo "MinIO: http://localhost:${MINIO_API_HOST_PORT} | Console: http://localhost:${MINIO_CONSOLE_HOST_PORT}"

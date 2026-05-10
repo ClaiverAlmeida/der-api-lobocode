@@ -23,13 +23,16 @@ export interface FileInfo {
 export class FilesService {
   private readonly logger = new Logger(FilesService.name);
   private readonly minioClient: Minio.Client;
-  private readonly bucketName = 'departamento-estadual-rodovias-files';
+  private readonly bucketName: string;
   private readonly publicMinioBaseUrl: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {
+    this.bucketName =
+      this.configService.get<string>('MINIO_BUCKET_NAME') ??
+      'departamento-estadual-rodovias-files';
     const isProduction = this.configService.get<string>('NODE_ENV') === 'production';
     const legacyEndpoint = this.configService.get<string>('MINIO_ENDPOINT');
     const internalEndpoint =
