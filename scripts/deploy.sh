@@ -37,6 +37,7 @@ show_help() {
   echo "  APP_HOST=${example_host} ./scripts/deploy.sh vps-backend"
   echo "  ./scripts/deploy.sh vps-service ${example_service}"
   echo "  ./scripts/deploy.sh database"
+  echo "  COMPOSE_FILE_EXTRA=docker/docker-compose.minio-traefik.yml ./scripts/deploy.sh database   # VPS: MinIO atrás do mesmo host HTTPS"
   echo "  ./scripts/deploy.sh sync-db"
 }
 
