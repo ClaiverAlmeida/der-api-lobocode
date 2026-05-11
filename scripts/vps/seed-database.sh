@@ -51,7 +51,12 @@ docker run --rm \
       echo "Nenhuma migration encontrada em prisma/migrations. Executando prisma db push..."
       npx prisma db push --skip-generate
     fi
-    npx ts-node prisma/seed.ts
+    # Seed idempotente (upsert); roda uma vez por execução deste script (ex.: deploy), não a cada restart do container.
+    if [ "${SKIP_DB_SEED:-0}" = "1" ]; then
+      echo "SKIP_DB_SEED=1: seed ignorado."
+    else
+      npx ts-node prisma/seed.ts
+    fi
   '
 
 echo "Pronto."

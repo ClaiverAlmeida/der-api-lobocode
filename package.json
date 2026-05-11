@@ -8,7 +8,8 @@
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "npm run build && npm run db:init:prod && npm run prisma:seed && node dist/src/main",
+    "start": "npm run build && npm run db:init:prod && node dist/src/main",
+    "start:with-seed": "npm run build && npm run db:init:prod && npm run prisma:seed && node dist/src/main",
     "start:dev": "npm run db:init:dev && npm run prisma:seed && nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/src/main",
@@ -20,7 +21,7 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "db:init:dev": "npm run prisma:generate && prisma migrate dev",
+    "db:init:dev": "npm run prisma:generate && prisma migrate dev --skip-seed",
     "db:init:prod": "npm run prisma:generate && prisma migrate deploy",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
@@ -32,6 +33,9 @@
     "dev:setup": "npm run db:init:dev && npm run prisma:seed",
     "prisma:pull": "prisma db pull",
     "prisma:push": "prisma db push"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@azure/service-bus": "^7.9.5",
