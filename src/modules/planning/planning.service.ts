@@ -123,6 +123,7 @@ export class PlanningService extends UniversalService<
                 cgr: true,
                 city: true,
                 color: true,
+                radiusKm: true,
               },
             },
           },

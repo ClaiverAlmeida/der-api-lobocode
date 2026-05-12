@@ -252,7 +252,7 @@ export class UsersService extends BaseUserService {
         select: { permissionType: true },
       },
       regional: {
-        select: { id: true, cgr: true, city: true },
+        select: { id: true, cgr: true, city: true, radiusKm: true },
       },
     };
 

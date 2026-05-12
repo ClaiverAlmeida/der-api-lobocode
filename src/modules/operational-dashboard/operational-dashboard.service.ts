@@ -170,6 +170,7 @@ export class OperationalDashboardService {
                   id: true,
                   city: true,
                   cgr: true,
+                  radiusKm: true,
                 },
               },
             },

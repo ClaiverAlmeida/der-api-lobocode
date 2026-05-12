@@ -304,6 +304,9 @@ model Regional {
   color  String
   status RegionalStatus @default(ACTIVE)
 
+  /** Raio de atuação no mapa (quilômetros), em torno de latitude/longitude. */
+  radiusKm Float @default(55)
+
   latitude  Float?
   longitude Float?
   address   Json?
@@ -490,9 +493,17 @@ model WorkOrderEvidence {
   @@index([fileId])
 }
 
+// Registro de pausa ou retomada da OS (texto completo do motivo em `reason`).
+enum WorkOrderPauseHistoryEventType {
+  PAUSE
+  RESUME
+}
+
 model WorkOrderPauseHistory {
   id     String @id @default(cuid())
-  reason String
+  reason String @db.Text
+
+  eventType WorkOrderPauseHistoryEventType @default(PAUSE)
 
   workOrderId String
   workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
