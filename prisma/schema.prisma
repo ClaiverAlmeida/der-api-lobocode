@@ -298,9 +298,8 @@ model Asset {
 
 model Regional {
   id     String         @id @default(cuid())
-  cgr    String
+  cgr    String         @unique
   city   String
-  /// Cor em hexadecimal (#RGB ou #RRGGBB) para identidade visual (ex.: menu lateral).
   color  String
   status RegionalStatus @default(ACTIVE)
 
@@ -398,10 +397,10 @@ model WorkOrder {
   locationId       String
   title            String
   description      String?
-  priority         WorkOrderPriority
+  priority         WorkOrderPriority?
   status           WorkOrderStatus     @default(PENDING)
   type             WorkOrderType
-  dueDate          DateTime?
+  dueDate          DateTime? @db.Date
   startedAt        DateTime?
   completedAt      DateTime?
   slaDeadlineHours Int?

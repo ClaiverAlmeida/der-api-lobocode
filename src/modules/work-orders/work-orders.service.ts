@@ -37,6 +37,11 @@ import { UpdateWorkOrderChecklistItemDto } from './dto/update-work-order-checkli
 import { CreateWorkOrderCheckListDto } from './dto/create-work-order-checklist-item.dto';
 import { MoveWorkOrderColumnDto } from './dto/move-work-order-column.dto';
 import { WorkOrderActivityNotificationService } from '../notifications/shared/work-order-activity-notification.service';
+import {
+  diaCivilParaDatePostgres,
+  extrairDiaCivilDoPrazo,
+  horasRestantesAteFimDoPrazo,
+} from './work-order-due-date.util';
 
 @Injectable({ scope: Scope.REQUEST })
 export class WorkOrdersService extends UniversalService<
@@ -718,14 +723,29 @@ export class WorkOrdersService extends UniversalService<
       }
     }
 
-    if (!data.slaDeadlineHours && data.dueDate) {
-      data.slaDeadlineHours = this.calcularHorasRestantes(
-        new Date(data.dueDate),
+    if (data.dueDate) {
+      const dia = extrairDiaCivilDoPrazo(String(data.dueDate));
+      if (dia) {
+        const dbDate = diaCivilParaDatePostgres(dia);
+        (data as { dueDate?: Date }).dueDate = dbDate;
+      } else {
+        delete (data as { dueDate?: unknown }).dueDate;
+      }
+    } else {
+      delete (data as { dueDate?: unknown }).dueDate;
+    }
+
+    if (!data.slaDeadlineHours && (data as { dueDate?: Date }).dueDate) {
+      const horas = horasRestantesAteFimDoPrazo(
+        (data as { dueDate?: Date }).dueDate,
       );
+      if (horas != null) {
+        data.slaDeadlineHours = horas;
+      }
     }
 
     data.slaStatus = this.calcularSlaStatus(
-      data.dueDate ? new Date(data.dueDate) : null,
+      (data as { dueDate?: Date }).dueDate ?? null,
       data.status,
     );
   }
@@ -855,11 +875,41 @@ export class WorkOrdersService extends UniversalService<
       (data as any).completedAt = null;
     }
 
-    if (data.dueDate || data.status) {
-      data.slaStatus = this.calcularSlaStatus(
-        data.dueDate ? new Date(data.dueDate) : null,
-        data.status,
-      );
+    const dueDateNoPayload = Object.prototype.hasOwnProperty.call(
+      data as object,
+      'dueDate',
+    );
+
+    if (dueDateNoPayload) {
+      if (data.dueDate === null || data.dueDate === '') {
+        (data as { dueDate: Date | null }).dueDate = null;
+        (data as { slaDeadlineHours?: number | null }).slaDeadlineHours = null;
+      } else if (typeof data.dueDate === 'string') {
+        const dia = extrairDiaCivilDoPrazo(data.dueDate);
+        const dbDate = dia ? diaCivilParaDatePostgres(dia) : null;
+        (data as { dueDate: Date | null }).dueDate = dbDate;
+        if (!dbDate) {
+          (data as { slaDeadlineHours?: number | null }).slaDeadlineHours = null;
+        }
+      }
+
+      if ((data as { dueDate?: Date | null }).dueDate) {
+        const horas = horasRestantesAteFimDoPrazo(
+          (data as { dueDate?: Date | null }).dueDate,
+        );
+        if (horas != null) {
+          (data as { slaDeadlineHours?: number }).slaDeadlineHours = horas;
+        }
+      }
+    }
+
+    if (dueDateNoPayload || data.status !== undefined) {
+      const effectiveDue = dueDateNoPayload
+        ? ((data as { dueDate?: Date | null }).dueDate ?? null)
+        : ((ordemAtual as { dueDate?: Date | null }).dueDate ?? null);
+      const effectiveStatus =
+        data.status !== undefined ? data.status : ordemAtual.status;
+      data.slaStatus = this.calcularSlaStatus(effectiveDue, effectiveStatus);
     }
   }
 
@@ -1166,7 +1216,10 @@ export class WorkOrdersService extends UniversalService<
       return WorkOrderSlaStatus.OK;
     }
 
-    const horasRestantes = this.calcularHorasRestantes(dueDate);
+    const horasRestantes = horasRestantesAteFimDoPrazo(dueDate);
+    if (horasRestantes == null) {
+      return WorkOrderSlaStatus.OK;
+    }
 
     if (horasRestantes <= 0) {
       return WorkOrderSlaStatus.OVERDUE;
@@ -1177,10 +1230,5 @@ export class WorkOrdersService extends UniversalService<
     }
 
     return WorkOrderSlaStatus.OK;
-  }
-
-  private calcularHorasRestantes(dueDate: Date): number {
-    const diferenca = dueDate.getTime() - Date.now();
-    return Math.ceil(diferenca / (1000 * 60 * 60));
   }
 }

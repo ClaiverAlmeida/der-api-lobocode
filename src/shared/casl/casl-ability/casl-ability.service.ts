@@ -1,7 +1,7 @@
 import { Injectable, Scope } from '@nestjs/common';
 import { AbilityBuilder, PureAbility } from '@casl/ability';
 import { createPrismaAbility, PrismaQuery, Subjects } from '@casl/prisma';
-import { Roles, User, PermissionType } from '@prisma/client';
+import { Roles, User, PermissionType, WorkOrderType } from '@prisma/client';
 import { isUsuarioAdministradorEmpresaOuSistema } from '../../regional-scope/regional-scope.helper';
 
 // Tipo estendido para User com permissões
@@ -173,23 +173,31 @@ function aplicarRestricaoGestaoEquipe(user: User, { cannot }: any) {
   });
 }
 
+/**
+ * C2C: sem CRUD de usuários alheios, mas com leitura de quem pode ser responsável em OS
+ * (alinhado a `UsersService.buscarTodosResponsaveisPorOrdensDeServico`) e à busca global.
+ */
+function aplicarRestricaoGestaoEquipeC2c(user: User, { can, cannot }: any) {
+  cannot('create', 'User', { companyId: user.companyId });
+  cannot('update', 'User', {
+    companyId: user.companyId,
+    NOT: { id: user.id },
+  });
+  cannot('delete', 'User', {
+    companyId: user.companyId,
+    NOT: { id: user.id },
+  });
+
+  can('read', 'User', {
+    companyId: user.companyId,
+    deletedAt: null,
+    role: { in: [Roles.ADMIN, Roles.FIELD_TEAM, Roles.C2C] },
+  });
+}
+
 // ========================================
 // MAPEAMENTO DE ROLES (schema DEPARTAMENTO ESTADUAL DE RODOVIAS: SYSTEM_ADMIN, ADMIN, FISCAL_CAMPO, OPERADOR, INSPETOR_VIA)
 // ========================================
-
-/**
- * Inspetor não recebe `companyRead`; concede leitura mínima da cadeia regional → localidade → ativo.
- */
-function concederLeituraCadeiaRegionalCampo(user: User, { can }: any) {
-  if (!user.regionalId) {
-    return;
-  }
-  const c = user.companyId;
-  const r = user.regionalId;
-  can('read', 'Regional', { companyId: c, id: r });
-  can('read', 'Location', { companyId: c, regionalId: r });
-  can('read', 'Asset', { companyId: c, location: { regionalId: r } });
-}
 
 /**
  * Restringe leitura e mutação de Regional, Location, Asset, WorkOrder e User (listagens)
@@ -261,6 +269,20 @@ function aplicarRestricoesRegionaisNaoAdmin(user: User, { cannot }: any) {
       NOT: { OR: [{ id: user.id }, { regionalId: r }] },
     });
   }
+}
+
+/**
+ * C2C: todas as regionais da empresa, porém somente ordens de serviço corretivas
+ * (leitura e mutação bloqueadas para demais tipos).
+ */
+function aplicarRestricoesPerfilC2c(user: User, { cannot }: any) {
+  const c = user.companyId;
+  const foraDoEscopoCorretivo = {
+    companyId: c,
+    NOT: { type: WorkOrderType.CORRECTIVE },
+  };
+  cannot(['read', 'update', 'delete'], 'WorkOrder', foraDoEscopoCorretivo);
+  cannot('create', 'WorkOrder', foraDoEscopoCorretivo);
 }
 
 /**
@@ -377,14 +399,14 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
   },
 
   C2C: (user: User, { can, cannot }: any) => {
-    administrativePermissions.companyRead(user, { can });
     profilePermissions.ownProfileExtended(user, { can });
-    basicResourcePermissions.readDocuments(user, { can });
-    operationalPermissions.clientManagement(user, { can });
     operationalReadScopePermissions.assetsLocationsRegionalsRead(user, { can });
+    basicResourcePermissions.readDocuments(user, { can });
     specificPermissions.notifications(user, { can });
     specificPermissions.workOrdersManage(user, { can });
-    aplicarRestricaoGestaoEquipe(user, { cannot });
+    specificPermissions.workOrderColumnsManage(user, { can });
+    specificPermissions.planningManage(user, { can });
+    aplicarRestricaoGestaoEquipeC2c(user, { can, cannot });
   },
 };
 
@@ -402,7 +424,7 @@ export class CaslAbilityService {
     rolePermissionsMap[user.role](user, builder);
 
     if (user.role === Roles.C2C) {
-      concederLeituraCadeiaRegionalCampo(user, builder);
+      aplicarRestricoesPerfilC2c(user, builder);
     }
 
     aplicarRestricoesRegionaisNaoAdmin(user, builder);

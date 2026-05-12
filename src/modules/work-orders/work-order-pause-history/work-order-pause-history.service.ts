@@ -10,6 +10,7 @@ import { REQUEST } from '@nestjs/core';
 import { WorkOrderStatus, WorkOrderSlaStatus } from '@prisma/client';
 import { PrismaService } from 'src/shared/prisma/prisma.service';
 import { CreateWorkOrderPauseHistoryDto } from '../dto/create-work-order-pause-history.dto';
+import { horasRestantesAteFimDoPrazo } from '../work-order-due-date.util';
 import { WorkOrdersService } from '../work-orders.service';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -132,9 +133,10 @@ export class WorkOrderPauseHistoryService {
       return WorkOrderSlaStatus.OK;
     }
 
-    const hoursRemaining = Math.ceil(
-      (dueDate.getTime() - Date.now()) / (1000 * 60 * 60),
-    );
+    const hoursRemaining = horasRestantesAteFimDoPrazo(dueDate);
+    if (hoursRemaining == null) {
+      return WorkOrderSlaStatus.OK;
+    }
 
     if (hoursRemaining <= 0) {
       return WorkOrderSlaStatus.OVERDUE;

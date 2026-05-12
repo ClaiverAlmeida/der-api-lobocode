@@ -132,6 +132,7 @@ export class GlobalSearchService {
             companyId: user.companyId,
             deletedAt: null,
             OR: [{ description: contains }],
+            AND: [accessibleBy(ability, 'read').Document],
           },
           select: { id: true, description: true, recipientType: true },
           take: limit,
