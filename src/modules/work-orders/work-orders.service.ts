@@ -787,6 +787,7 @@ export class WorkOrdersService extends UniversalService<
     locationId: string,
     type: 'CORRECTIVE' | 'PREVENTIVE',
     equipmentType?: AssetType,
+    excludeWorkOrderId?: string,
   ): Promise<void> {
     const tiposBloqueados = [
       WorkOrderType.CORRECTIVE,
@@ -815,6 +816,7 @@ export class WorkOrdersService extends UniversalService<
           notIn: [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED],
         },
         ...(companyId ? { companyId } : {}),
+        ...(excludeWorkOrderId ? { id: { not: excludeWorkOrderId } } : {}),
       },
       select: {
         id: true,
@@ -848,6 +850,38 @@ export class WorkOrdersService extends UniversalService<
 
     if (data.locationId) {
       await this.buscarLocalidadeValida(data.locationId);
+    }
+
+    const mudouLocalidade =
+      data.locationId !== undefined &&
+      data.locationId !== ordemAtual.locationId;
+    const mudouEquipamento = Object.prototype.hasOwnProperty.call(
+      data as object,
+      'equipmentType',
+    );
+    const equipmentTypePayload = mudouEquipamento
+      ? ((data as { equipmentType?: AssetType | null }).equipmentType ?? null)
+      : undefined;
+    const mudouValorEquipamento =
+      mudouEquipamento &&
+      equipmentTypePayload !== (ordemAtual.equipmentType ?? null);
+    const mudouTipo =
+      data.type !== undefined && data.type !== ordemAtual.type;
+
+    if (mudouLocalidade || mudouValorEquipamento || mudouTipo) {
+      const locationIdEfetivo =
+        data.locationId !== undefined ? data.locationId : ordemAtual.locationId;
+      const tipoEfetivo =
+        data.type !== undefined ? data.type : ordemAtual.type;
+      const equipmentEfetivo = mudouEquipamento
+        ? (equipmentTypePayload ?? undefined)
+        : (ordemAtual.equipmentType ?? undefined);
+      await this.validarBloqueioPorOsAberta(
+        locationIdEfetivo,
+        tipoEfetivo as 'CORRECTIVE' | 'PREVENTIVE',
+        equipmentEfetivo,
+        _id,
+      );
     }
 
     if (Object.prototype.hasOwnProperty.call(data as object, 'planningId')) {
