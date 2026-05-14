@@ -41,7 +41,10 @@ export class WorkOrderPauseHistoryController {
   }
 
   @Patch('resume')
-  async retomar(@Param('workOrderId') workOrderId: string) {
-    return this.workOrderPauseHistoryService.resume(workOrderId);
+  async retomar(
+    @Param('workOrderId') workOrderId: string,
+    @Body() body: CreateWorkOrderPauseHistoryDto,
+  ) {
+    return this.workOrderPauseHistoryService.resume(workOrderId, body);
   }
 }

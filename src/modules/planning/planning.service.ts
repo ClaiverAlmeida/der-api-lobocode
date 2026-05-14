@@ -7,7 +7,7 @@ import {
   Scope,
 } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
-import { UserStatus } from '@prisma/client';
+import { PlanningExecutionStatus, UserStatus } from '@prisma/client';
 import {
   UniversalMetricsService,
   UniversalPermissionService,
@@ -50,6 +50,58 @@ export class PlanningService extends UniversalService<
     this.setEntityConfig();
   }
 
+  /**
+   * `GET /planning/all?date=YYYY-MM-DD` — quando `date` é válido, retorna só planejamentos
+   * desse dia (intervalo UTC [00:00, 24h) a partir da data calendário).
+   * Sem `date`, mantém o comportamento anterior (todos os registros permitidos por CASL).
+   */
+  async buscarTodos() {
+    this.permissionService.validarAction(this.entityNameCasl, 'read');
+
+    const whereClause = this.queryService.construirWhereClauseParaRead(
+      this.entityNameCasl,
+    );
+
+    const req = (
+      this as unknown as { request?: { query?: Record<string, unknown> } }
+    ).request;
+    const dayYmd = PlanningService.parseDateQueryParam(req?.query?.date);
+    if (dayYmd) {
+      PlanningService.mergeDayUtcRangeIntoWhere(whereClause, dayYmd);
+    }
+
+    const includeConfig = this.getIncludeConfig();
+    const orderBy =
+      this.getEntityConfig().orderBy ?? ({ createdAt: 'desc' } as const);
+    const entities = await this.repository.buscarMuitos(
+      this.entityName,
+      whereClause,
+      { orderBy },
+      includeConfig,
+    );
+    return this.transformData(entities);
+  }
+
+  private static parseDateQueryParam(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const s = value.trim().slice(0, 10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  }
+
+  private static mergeDayUtcRangeIntoWhere(
+    whereClause: { AND?: unknown[] },
+    dayYmd: string,
+  ): void {
+    const start = new Date(`${dayYmd}T00:00:00.000Z`);
+    const endExclusive = new Date(start);
+    endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
+    const dateFilter = { date: { gte: start, lt: endExclusive } };
+    if (!Array.isArray(whereClause.AND)) {
+      whereClause.AND = [];
+    }
+    whereClause.AND.push(dateFilter);
+  }
+
   setEntityConfig() {
     const companyId = this.obterCompanyId();
     this.entityConfig = {
@@ -68,8 +120,10 @@ export class PlanningService extends UniversalService<
             regional: {
               select: {
                 id: true,
-                sgr: true,
+                cgr: true,
                 city: true,
+                color: true,
+                radiusKm: true,
               },
             },
           },
@@ -119,6 +173,13 @@ export class PlanningService extends UniversalService<
     (data as any).km = data.km;
     (data as any).observation = data.observation?.trim() || null;
     (data as any).locationId = data.locationId;
+
+    if (data.executionStatus !== undefined) {
+      PlanningService.aplicarExecutionStatusECompletedAt(
+        data as CreatePlanningDto & { completedAt?: Date | null },
+      );
+    }
+
     delete (data as any).responsibleIds;
     delete (data as any).workOrderId;
   }
@@ -159,6 +220,12 @@ export class PlanningService extends UniversalService<
     }
     if (data.observation !== undefined) {
       (data as any).observation = data.observation?.trim() || null;
+    }
+
+    if (data.executionStatus !== undefined) {
+      PlanningService.aplicarExecutionStatusECompletedAt(
+        data as UpdatePlanningDto & { completedAt?: Date | null },
+      );
     }
 
     this.pendingUpdateWorkOrderCurrentId = atual.workOrder?.id ?? null;
@@ -290,6 +357,19 @@ export class PlanningService extends UniversalService<
   private validarCompanyId() {
     if (!this.obterCompanyId()) {
       throw new BadRequestException('Empresa do usuário não encontrada.');
+    }
+  }
+
+  /** Preenche `completedAt` conforme o status de execução (somente campos Prisma). */
+  private static aplicarExecutionStatusECompletedAt(
+    data: { executionStatus?: PlanningExecutionStatus } & {
+      completedAt?: Date | null;
+    },
+  ): void {
+    if (data.executionStatus === PlanningExecutionStatus.COMPLETED) {
+      (data as { completedAt?: Date }).completedAt = new Date();
+    } else if (data.executionStatus === PlanningExecutionStatus.PENDING) {
+      (data as { completedAt?: null }).completedAt = null;
     }
   }
 }

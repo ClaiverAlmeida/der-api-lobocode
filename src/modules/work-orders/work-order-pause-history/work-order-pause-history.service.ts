@@ -7,9 +7,15 @@ import {
   Scope,
 } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
-import { WorkOrderStatus, WorkOrderSlaStatus } from '@prisma/client';
+import {
+  WorkOrderPauseHistoryEventType,
+  WorkOrderStatus,
+  WorkOrderSlaStatus,
+} from '@prisma/client';
 import { PrismaService } from 'src/shared/prisma/prisma.service';
 import { CreateWorkOrderPauseHistoryDto } from '../dto/create-work-order-pause-history.dto';
+import { buildWorkOrderPauseHistoryReason } from './work-order-pause-preset.constants';
+import { horasRestantesAteFimDoPrazo } from '../work-order-due-date.util';
 import { WorkOrdersService } from '../work-orders.service';
 
 @Injectable({ scope: Scope.REQUEST })
@@ -51,10 +57,10 @@ export class WorkOrderPauseHistoryService {
       );
     }
 
-    const reason = dto.reason.trim();
-    if (!reason) {
-      throw new BadRequestException('Informe o motivo da pausa.');
-    }
+    const reason = buildWorkOrderPauseHistoryReason(
+      dto.presetReason,
+      dto.customReason,
+    );
 
     await this.prisma.$transaction(async (tx) => {
       await tx.workOrderPauseHistory.create({
@@ -62,6 +68,7 @@ export class WorkOrderPauseHistoryService {
           workOrderId: workOrder.id,
           pausedByUserId,
           reason,
+          eventType: WorkOrderPauseHistoryEventType.PAUSE,
         },
       });
 
@@ -78,9 +85,12 @@ export class WorkOrderPauseHistoryService {
     return this.workOrdersService.buscarDetalhesPorId(workOrder.id);
   }
 
-  async resume(workOrderId: string) {
+  async resume(workOrderId: string, dto: CreateWorkOrderPauseHistoryDto) {
     const workOrder = await this.findScopedWorkOrder(workOrderId);
     const userId = this.getCurrentUserId();
+    if (!userId) {
+      throw new BadRequestException('Usuário autenticado não encontrado.');
+    }
 
     if (workOrder.status !== WorkOrderStatus.PAUSED) {
       throw new BadRequestException(
@@ -88,13 +98,29 @@ export class WorkOrderPauseHistoryService {
       );
     }
 
-    await this.prisma.workOrder.update({
-      where: { id: workOrder.id },
-      data: {
-        status: WorkOrderStatus.IN_PROGRESS,
-        updatedBy: userId ?? undefined,
-        slaStatus: this.calculateSlaStatus(workOrder.dueDate),
-      },
+    const reason = buildWorkOrderPauseHistoryReason(
+      dto.presetReason,
+      dto.customReason,
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.workOrderPauseHistory.create({
+        data: {
+          workOrderId: workOrder.id,
+          pausedByUserId: userId,
+          reason,
+          eventType: WorkOrderPauseHistoryEventType.RESUME,
+        },
+      });
+
+      await tx.workOrder.update({
+        where: { id: workOrder.id },
+        data: {
+          status: WorkOrderStatus.IN_PROGRESS,
+          updatedBy: userId,
+          slaStatus: this.calculateSlaStatus(workOrder.dueDate),
+        },
+      });
     });
 
     return this.workOrdersService.buscarDetalhesPorId(workOrder.id);
@@ -132,9 +158,10 @@ export class WorkOrderPauseHistoryService {
       return WorkOrderSlaStatus.OK;
     }
 
-    const hoursRemaining = Math.ceil(
-      (dueDate.getTime() - Date.now()) / (1000 * 60 * 60),
-    );
+    const hoursRemaining = horasRestantesAteFimDoPrazo(dueDate);
+    if (hoursRemaining == null) {
+      return WorkOrderSlaStatus.OK;
+    }
 
     if (hoursRemaining <= 0) {
       return WorkOrderSlaStatus.OVERDUE;

@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   ArrayUnique,
   IsEnum,
@@ -5,8 +6,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsDateString,
   IsArray,
+  Matches,
 } from 'class-validator';
 import {
   AssetType,
@@ -30,10 +31,12 @@ export class CreateWorkOrderDto {
   @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   description?: string;
 
+  @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsEnum(WorkOrderPriority, {
     message: VALIDATION_MESSAGES.FORMAT.ENUM_INVALID,
   })
-  priority: WorkOrderPriority;
+  priority?: WorkOrderPriority;
 
   @IsOptional()
   @IsEnum(WorkOrderStatus, {
@@ -61,7 +64,10 @@ export class CreateWorkOrderDto {
   assignedToUserIds?: string[];
 
   @IsOptional()
-  @IsDateString({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @Transform(({ value }) => (value === '' || value === null ? undefined : value))
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'Prazo inválido. Use o formato AAAA-MM-DD (somente data).',
+  })
   dueDate?: string;
 
   @IsOptional()

@@ -68,16 +68,10 @@ export class WorkOrderActivityNotificationService {
 
   @Cron(CronExpression.EVERY_DAY_AT_8AM)
   async notifyUpcomingDeadlines() {
-    const now = new Date();
-    const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
     const workOrders = await this.prisma.workOrder.findMany({
       where: {
         deletedAt: null,
-        dueDate: {
-          gte: now,
-          lte: in24h,
-        },
+        dueDate: { not: null },
         status: {
           notIn: [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED],
         },
@@ -86,6 +80,7 @@ export class WorkOrderActivityNotificationService {
         id: true,
         title: true,
         companyId: true,
+        dueDate: true,
         assignees: {
           select: {
             userId: true,
@@ -94,7 +89,28 @@ export class WorkOrderActivityNotificationService {
       },
     });
 
+    const todayBr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+    }).format(new Date());
+
+    const tomorrowBr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+    }).format(new Date(Date.now() + 24 * 60 * 60 * 1000));
+
+    const ymdFromDbDate = (d: Date | null): string | null => {
+      if (!d) return null;
+      const y = d.getUTCFullYear();
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
     for (const order of workOrders) {
+      const ymd = ymdFromDbDate(order.dueDate);
+      if (!ymd || (ymd !== todayBr && ymd !== tomorrowBr)) {
+        continue;
+      }
+
       const recipients =
         await this.preferencesService.filtrarUsuariosComPreferenciaAtiva(
           order.assignees.map((a) => a.userId),
@@ -102,9 +118,11 @@ export class WorkOrderActivityNotificationService {
         );
       if (recipients.length === 0) continue;
 
+      const quando = ymd === todayBr ? 'hoje' : 'amanhã';
+
       await this.notificationService.criar({
         title: 'Prazo próximo',
-        message: `A OS "${order.title}" vence nas próximas 24 horas.`,
+        message: `A OS "${order.title}" tem prazo ${quando} (${ymd}).`,
         entityType: 'work-order-deadline',
         entityId: order.id,
         userId: 'system',

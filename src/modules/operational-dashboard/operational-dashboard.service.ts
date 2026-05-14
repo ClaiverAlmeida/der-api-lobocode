@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
-    AssetType,
+  AssetType,
   AssetStatus,
   Prisma,
+  Roles,
   WorkOrderSlaStatus,
   WorkOrderStatus,
   WorkOrderPriority,
@@ -18,7 +19,7 @@ export class OperationalDashboardService {
     private readonly tenantService: TenantService,
   ) {}
 
-  async obterResumoOperacional() {
+  async obterResumoOperacional(userRole?: Roles) {
     const companyId = this.tenantService.getCompanyId();
     const periodStart = this.obterInicioDosUltimosDias(7);
 
@@ -30,6 +31,7 @@ export class OperationalDashboardService {
     const workOrderWhere: Prisma.WorkOrderWhereInput = {
       deletedAt: null,
       ...(companyId && { companyId }),
+      ...(userRole === Roles.C2C && { type: WorkOrderType.CORRECTIVE }),
     };
 
     const [
@@ -151,7 +153,7 @@ export class OperationalDashboardService {
         where: {
           ...workOrderWhere,
           equipmentType: {
-            in: [AssetType.CAMERA, AssetType.ATDB, AssetType.TMV],
+            in: [AssetType.CAMERA, AssetType.ATDB, AssetType.PMV],
           },
         },
         distinct: ['locationId', 'equipmentType'],
@@ -167,7 +169,8 @@ export class OperationalDashboardService {
                 select: {
                   id: true,
                   city: true,
-                  sgr: true,
+                  cgr: true,
+                  radiusKm: true,
                 },
               },
             },
@@ -180,7 +183,7 @@ export class OperationalDashboardService {
           type: WorkOrderType.PREVENTIVE,
           status: WorkOrderStatus.COMPLETED,
           equipmentType: {
-            in: [AssetType.CAMERA, AssetType.ATDB, AssetType.TMV],
+            in: [AssetType.CAMERA, AssetType.ATDB, AssetType.PMV],
           },
         },
         by: ['locationId', 'equipmentType'],
@@ -201,7 +204,11 @@ export class OperationalDashboardService {
       km: 0,
       issue: wo.title,
       severity:
-        wo.priority === WorkOrderPriority.CRITICAL ? 'critical' : 'high',
+        wo.priority === WorkOrderPriority.CRITICAL
+          ? 'critical'
+          : wo.priority === WorkOrderPriority.HIGH
+            ? 'high'
+            : 'medium',
       time: wo.createdAt.toISOString(),
     }));
 

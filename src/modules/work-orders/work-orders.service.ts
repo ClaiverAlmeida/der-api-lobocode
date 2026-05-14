@@ -11,6 +11,7 @@ import { REQUEST } from '@nestjs/core';
 import {
   AssetType,
   FileType,
+  PlanningExecutionStatus,
   Prisma,
   Roles,
   UserStatus,
@@ -37,6 +38,11 @@ import { UpdateWorkOrderChecklistItemDto } from './dto/update-work-order-checkli
 import { CreateWorkOrderCheckListDto } from './dto/create-work-order-checklist-item.dto';
 import { MoveWorkOrderColumnDto } from './dto/move-work-order-column.dto';
 import { WorkOrderActivityNotificationService } from '../notifications/shared/work-order-activity-notification.service';
+import {
+  diaCivilParaDatePostgres,
+  extrairDiaCivilDoPrazo,
+  horasRestantesAteFimDoPrazo,
+} from './work-order-due-date.util';
 
 @Injectable({ scope: Scope.REQUEST })
 export class WorkOrdersService extends UniversalService<
@@ -61,8 +67,9 @@ export class WorkOrdersService extends UniversalService<
         regional: {
           select: {
             id: true,
-            sgr: true,
+            cgr: true,
             city: true,
+            radiusKm: true,
           },
         },
       },
@@ -177,8 +184,9 @@ export class WorkOrdersService extends UniversalService<
             regional: {
               select: {
                 id: true,
-                sgr: true,
+                cgr: true,
                 city: true,
+                radiusKm: true,
               },
             },
           },
@@ -216,11 +224,42 @@ export class WorkOrdersService extends UniversalService<
 
   async buscarPorId(id: string, include?: Prisma.WorkOrderInclude) {
     const ordem = await super.buscarPorId(id, include ?? this.detalhesInclude);
-    return this.normalizarDetalhesDaOrdem(ordem);
+    const normalizada = this.normalizarDetalhesDaOrdem(ordem);
+    return this.enriquecerComNumeroSequencial(normalizada);
   }
 
   async buscarDetalhesPorId(id: string) {
     return this.buscarPorId(id, this.detalhesInclude);
+  }
+
+  async buscarTodos() {
+    const resultado = await super.buscarTodos();
+    return this.enriquecerComNumeroSequencial(resultado);
+  }
+
+  async buscarComPaginacao(page = 1, limit = 20, include?: any) {
+    const resultado = await super.buscarComPaginacao(page, limit, include);
+    return this.enriquecerComNumeroSequencial(resultado);
+  }
+
+  async buscarPorCampo(field: string, value: any, include?: any) {
+    const resultado = await super.buscarPorCampo(field, value, include);
+    return this.enriquecerComNumeroSequencial(resultado);
+  }
+
+  async buscarMuitosPorCampo(field: string, value: any, include?: any) {
+    const resultado = await super.buscarMuitosPorCampo(field, value, include);
+    return this.enriquecerComNumeroSequencial(resultado);
+  }
+
+  async criar(data: CreateWorkOrderDto, include?: any, role?: Roles) {
+    const entity = await super.criar(data, include, role);
+    return this.enriquecerComNumeroSequencial(entity);
+  }
+
+  async atualizar(id: string, dto: UpdateWorkOrderDto, include?: any) {
+    const entity = await super.atualizar(id, dto, include);
+    return this.enriquecerComNumeroSequencial(entity);
   }
 
   async buscarPorLocalidade(locationId: string) {
@@ -416,6 +455,8 @@ export class WorkOrdersService extends UniversalService<
         : 'OS concluída.',
     );
 
+    await this.concluirPlanejamentoVinculadoAoFinalizarOs(ordem.id);
+
     return this.buscarDetalhesPorId(ordem.id);
   }
 
@@ -503,6 +544,10 @@ export class WorkOrdersService extends UniversalService<
         updatedBy: this.obterUsuarioLogadoId() ?? undefined,
       },
     });
+
+    if (novoStatus === WorkOrderStatus.COMPLETED) {
+      await this.concluirPlanejamentoVinculadoAoFinalizarOs(ordem.id);
+    }
 
     return this.buscarDetalhesPorId(ordem.id);
   }
@@ -718,14 +763,29 @@ export class WorkOrdersService extends UniversalService<
       }
     }
 
-    if (!data.slaDeadlineHours && data.dueDate) {
-      data.slaDeadlineHours = this.calcularHorasRestantes(
-        new Date(data.dueDate),
+    if (data.dueDate) {
+      const dia = extrairDiaCivilDoPrazo(String(data.dueDate));
+      if (dia) {
+        const dbDate = diaCivilParaDatePostgres(dia);
+        (data as { dueDate?: Date }).dueDate = dbDate;
+      } else {
+        delete (data as { dueDate?: unknown }).dueDate;
+      }
+    } else {
+      delete (data as { dueDate?: unknown }).dueDate;
+    }
+
+    if (!data.slaDeadlineHours && (data as { dueDate?: Date }).dueDate) {
+      const horas = horasRestantesAteFimDoPrazo(
+        (data as { dueDate?: Date }).dueDate,
       );
+      if (horas != null) {
+        data.slaDeadlineHours = horas;
+      }
     }
 
     data.slaStatus = this.calcularSlaStatus(
-      data.dueDate ? new Date(data.dueDate) : null,
+      (data as { dueDate?: Date }).dueDate ?? null,
       data.status,
     );
   }
@@ -734,6 +794,7 @@ export class WorkOrdersService extends UniversalService<
     locationId: string,
     type: 'CORRECTIVE' | 'PREVENTIVE',
     equipmentType?: AssetType,
+    excludeWorkOrderId?: string,
   ): Promise<void> {
     const tiposBloqueados = [
       WorkOrderType.CORRECTIVE,
@@ -747,7 +808,7 @@ export class WorkOrdersService extends UniversalService<
     const equipmentTypeLabel: Record<AssetType, string> = {
       CAMERA: 'câmera',
       ATDB: 'ATDB',
-      TMV: 'TMV',
+      PMV: 'PMV',
       OTHER: 'equipamento',
     };
 
@@ -762,6 +823,7 @@ export class WorkOrdersService extends UniversalService<
           notIn: [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED],
         },
         ...(companyId ? { companyId } : {}),
+        ...(excludeWorkOrderId ? { id: { not: excludeWorkOrderId } } : {}),
       },
       select: {
         id: true,
@@ -795,6 +857,38 @@ export class WorkOrdersService extends UniversalService<
 
     if (data.locationId) {
       await this.buscarLocalidadeValida(data.locationId);
+    }
+
+    const mudouLocalidade =
+      data.locationId !== undefined &&
+      data.locationId !== ordemAtual.locationId;
+    const mudouEquipamento = Object.prototype.hasOwnProperty.call(
+      data as object,
+      'equipmentType',
+    );
+    const equipmentTypePayload = mudouEquipamento
+      ? ((data as { equipmentType?: AssetType | null }).equipmentType ?? null)
+      : undefined;
+    const mudouValorEquipamento =
+      mudouEquipamento &&
+      equipmentTypePayload !== (ordemAtual.equipmentType ?? null);
+    const mudouTipo =
+      data.type !== undefined && data.type !== ordemAtual.type;
+
+    if (mudouLocalidade || mudouValorEquipamento || mudouTipo) {
+      const locationIdEfetivo =
+        data.locationId !== undefined ? data.locationId : ordemAtual.locationId;
+      const tipoEfetivo =
+        data.type !== undefined ? data.type : ordemAtual.type;
+      const equipmentEfetivo = mudouEquipamento
+        ? (equipmentTypePayload ?? undefined)
+        : (ordemAtual.equipmentType ?? undefined);
+      await this.validarBloqueioPorOsAberta(
+        locationIdEfetivo,
+        tipoEfetivo as 'CORRECTIVE' | 'PREVENTIVE',
+        equipmentEfetivo,
+        _id,
+      );
     }
 
     if (Object.prototype.hasOwnProperty.call(data as object, 'planningId')) {
@@ -855,11 +949,41 @@ export class WorkOrdersService extends UniversalService<
       (data as any).completedAt = null;
     }
 
-    if (data.dueDate || data.status) {
-      data.slaStatus = this.calcularSlaStatus(
-        data.dueDate ? new Date(data.dueDate) : null,
-        data.status,
-      );
+    const dueDateNoPayload = Object.prototype.hasOwnProperty.call(
+      data as object,
+      'dueDate',
+    );
+
+    if (dueDateNoPayload) {
+      if (data.dueDate === null || data.dueDate === '') {
+        (data as { dueDate: Date | null }).dueDate = null;
+        (data as { slaDeadlineHours?: number | null }).slaDeadlineHours = null;
+      } else if (typeof data.dueDate === 'string') {
+        const dia = extrairDiaCivilDoPrazo(data.dueDate);
+        const dbDate = dia ? diaCivilParaDatePostgres(dia) : null;
+        (data as { dueDate: Date | null }).dueDate = dbDate;
+        if (!dbDate) {
+          (data as { slaDeadlineHours?: number | null }).slaDeadlineHours = null;
+        }
+      }
+
+      if ((data as { dueDate?: Date | null }).dueDate) {
+        const horas = horasRestantesAteFimDoPrazo(
+          (data as { dueDate?: Date | null }).dueDate,
+        );
+        if (horas != null) {
+          (data as { slaDeadlineHours?: number }).slaDeadlineHours = horas;
+        }
+      }
+    }
+
+    if (dueDateNoPayload || data.status !== undefined) {
+      const effectiveDue = dueDateNoPayload
+        ? ((data as { dueDate?: Date | null }).dueDate ?? null)
+        : ((ordemAtual as { dueDate?: Date | null }).dueDate ?? null);
+      const effectiveStatus =
+        data.status !== undefined ? data.status : ordemAtual.status;
+      data.slaStatus = this.calcularSlaStatus(effectiveDue, effectiveStatus);
     }
   }
 
@@ -867,6 +991,8 @@ export class WorkOrdersService extends UniversalService<
     id: string,
     _data: UpdateWorkOrderDto,
   ): Promise<void> {
+    await this.concluirPlanejamentoVinculadoAoFinalizarOs(id);
+
     if (this.pendingUpdateAssigneeIds === null) {
       return;
     }
@@ -1121,6 +1247,78 @@ export class WorkOrdersService extends UniversalService<
     } as any);
   }
 
+  /**
+   * Calcula o número sequencial de cada OS da empresa atual, ordenado por
+   * createdAt ascendente (com id como desempate). OSs com soft-delete são
+   * ignoradas, o que faz a numeração re-ordenar automaticamente quando algo
+   * é excluído.
+   */
+  private async obterMapaSequencialPorEmpresa(): Promise<Map<string, number>> {
+    const companyId = this.obterCompanyId();
+    const rows = companyId
+      ? await this.prisma.$queryRaw<Array<{ id: string; seq: bigint | number }>>`
+          SELECT id, ROW_NUMBER() OVER (ORDER BY "createdAt" ASC, id ASC)::int AS seq
+          FROM "WorkOrder"
+          WHERE "deletedAt" IS NULL AND "companyId" = ${companyId}
+        `
+      : await this.prisma.$queryRaw<Array<{ id: string; seq: bigint | number }>>`
+          SELECT id, ROW_NUMBER() OVER (ORDER BY "createdAt" ASC, id ASC)::int AS seq
+          FROM "WorkOrder"
+          WHERE "deletedAt" IS NULL
+        `;
+
+    const mapa = new Map<string, number>();
+    for (const row of rows) {
+      const seq = typeof row.seq === 'bigint' ? Number(row.seq) : row.seq;
+      mapa.set(row.id, seq);
+    }
+    return mapa;
+  }
+
+  private aplicarNumeroSequencial<T extends Record<string, any>>(
+    entity: T,
+    mapa: Map<string, number>,
+  ): T {
+    if (!entity || typeof entity !== 'object' || typeof entity.id !== 'string') {
+      return entity;
+    }
+    return { ...entity, sequentialNumber: mapa.get(entity.id) ?? null };
+  }
+
+  /**
+   * Anexa `sequentialNumber` à(s) OS contida(s) na resposta. Funciona tanto
+   * para a entidade pura quanto para o envelope `{ data, ... }` usado pelas
+   * rotas de listagem/paginação.
+   */
+  private async enriquecerComNumeroSequencial<R>(resposta: R): Promise<R> {
+    if (!resposta || typeof resposta !== 'object') {
+      return resposta;
+    }
+
+    const mapa = await this.obterMapaSequencialPorEmpresa();
+
+    if (Array.isArray(resposta)) {
+      return resposta.map((item) =>
+        this.aplicarNumeroSequencial(item, mapa),
+      ) as unknown as R;
+    }
+
+    const respostaObj = resposta as Record<string, any>;
+    if ('data' in respostaObj) {
+      const dados = respostaObj.data;
+      if (Array.isArray(dados)) {
+        respostaObj.data = dados.map((item) =>
+          this.aplicarNumeroSequencial(item, mapa),
+        );
+      } else if (dados && typeof dados === 'object') {
+        respostaObj.data = this.aplicarNumeroSequencial(dados, mapa);
+      }
+      return resposta;
+    }
+
+    return this.aplicarNumeroSequencial(respostaObj, mapa) as unknown as R;
+  }
+
   private normalizarDetalhesDaOrdem<T>(ordem: T): T {
     if (!ordem || typeof ordem !== 'object') {
       return ordem;
@@ -1166,7 +1364,10 @@ export class WorkOrdersService extends UniversalService<
       return WorkOrderSlaStatus.OK;
     }
 
-    const horasRestantes = this.calcularHorasRestantes(dueDate);
+    const horasRestantes = horasRestantesAteFimDoPrazo(dueDate);
+    if (horasRestantes == null) {
+      return WorkOrderSlaStatus.OK;
+    }
 
     if (horasRestantes <= 0) {
       return WorkOrderSlaStatus.OVERDUE;
@@ -1179,8 +1380,28 @@ export class WorkOrdersService extends UniversalService<
     return WorkOrderSlaStatus.OK;
   }
 
-  private calcularHorasRestantes(dueDate: Date): number {
-    const diferenca = dueDate.getTime() - Date.now();
-    return Math.ceil(diferenca / (1000 * 60 * 60));
+  /** Planejamento vinculado à OS passa a COMPLETED quando a OS fica concluída. */
+  private async concluirPlanejamentoVinculadoAoFinalizarOs(
+    workOrderId: string,
+  ): Promise<void> {
+    const ordem = await this.prisma.workOrder.findFirst({
+      where: { id: workOrderId, deletedAt: null },
+      select: { status: true },
+    });
+    if (!ordem || ordem.status !== WorkOrderStatus.COMPLETED) {
+      return;
+    }
+
+    await this.prisma.planning.updateMany({
+      where: {
+        deletedAt: null,
+        executionStatus: PlanningExecutionStatus.PENDING,
+        workOrder: { id: workOrderId },
+      },
+      data: {
+        executionStatus: PlanningExecutionStatus.COMPLETED,
+        completedAt: new Date(),
+      },
+    });
   }
 }

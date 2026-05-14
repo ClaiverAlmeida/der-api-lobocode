@@ -31,11 +31,6 @@ enum UserStatus {
   PENDING // Pendente
 }
 
-enum PermissionType {
-  REPORTS // Relatórios
-  INSPETOR_VIA // Motorista
-}
-
 // ===============================================
 // ENUMS - DOMÍNIO DEPARTAMENTO ESTADUAL DE RODOVIAS
 // ===============================================
@@ -43,7 +38,7 @@ enum PermissionType {
 enum AssetType {
   CAMERA // Câmera
   ATDB // ATDB
-  TMV // TMV
+  PMV // PMV
   OTHER // Outro
 }
 
@@ -195,7 +190,6 @@ model User {
   regionalId String?
   regional   Regional? @relation(fields: [regionalId], references: [id], onDelete: SetNull)
 
-  permissions             Permission[]
   oauthAccounts           OAuthAccount[]
   workOrderPauseHistories WorkOrderPauseHistory[]
   planningAssignments     PlanningResponsible[]
@@ -240,20 +234,6 @@ model OAuthAccount {
   @@index([provider])
 }
 
-model Permission {
-  id             String         @id @default(cuid())
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId         String
-  permissionType PermissionType
-  granted        Boolean        @default(true)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
-  @@unique([userId, permissionType])
-  @@index([userId])
-  @@index([permissionType])
-}
-
 // ===============================================
 // ATIVOS EM CAMPO (câmeras, sensores, equipamentos)
 // ===============================================
@@ -270,6 +250,7 @@ model Asset {
   criticality     AssetCriticality     @default(MEDIUM)
   latitude        Float?
   longitude       Float?
+  ipAddresses     Json?
   lastSignalAt    DateTime?
   connectionType  AssetConnectionType?
   connectionUrl   String?
@@ -298,9 +279,17 @@ model Asset {
 
 model Regional {
   id     String         @id @default(cuid())
-  sgr    String
+  cgr    String         @unique
   city   String
+  color  String
   status RegionalStatus @default(ACTIVE)
+
+  /** Raio de atuação no mapa (quilômetros), em torno de latitude/longitude. */
+  radiusKm Float @default(55)
+
+  latitude  Float?
+  longitude Float?
+  address   Json?
 
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyId String
@@ -314,7 +303,7 @@ model Regional {
   workOrderColumns WorkOrderColumn[]
 
   @@index([companyId])
-  @@index([sgr])
+  @@index([cgr])
   @@index([deletedAt])
 }
 
@@ -329,7 +318,8 @@ model Location {
   uf          String
   referenceKm Float
   status      RegionalStatus @default(ACTIVE)
-  ipAddresses Json?
+  latitude    Float?
+  longitude   Float?
 
   companyId String
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -396,10 +386,10 @@ model WorkOrder {
   locationId       String
   title            String
   description      String?
-  priority         WorkOrderPriority
+  priority         WorkOrderPriority?
   status           WorkOrderStatus     @default(PENDING)
   type             WorkOrderType
-  dueDate          DateTime?
+  dueDate          DateTime? @db.Date
   startedAt        DateTime?
   completedAt      DateTime?
   slaDeadlineHours Int?
@@ -483,9 +473,17 @@ model WorkOrderEvidence {
   @@index([fileId])
 }
 
+// Registro de pausa ou retomada da OS (texto completo do motivo em `reason`).
+enum WorkOrderPauseHistoryEventType {
+  PAUSE
+  RESUME
+}
+
 model WorkOrderPauseHistory {
   id     String @id @default(cuid())
-  reason String
+  reason String @db.Text
+
+  eventType WorkOrderPauseHistoryEventType @default(PAUSE)
 
   workOrderId String
   workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
@@ -498,6 +496,11 @@ model WorkOrderPauseHistory {
   @@index([workOrderId])
 }
 
+enum PlanningExecutionStatus {
+  PENDING
+  COMPLETED
+}
+
 model Planning {
   id            String        @id @default(cuid())
   title         String
@@ -506,6 +509,9 @@ model Planning {
   equipmentType AssetType
   km            Float
   observation   String?
+
+  executionStatus PlanningExecutionStatus @default(PENDING)
+  completedAt     DateTime?
 
   locationId String
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
@@ -523,6 +529,7 @@ model Planning {
   @@index([id])
   @@index([companyId])
   @@index([locationId])
+  @@index([executionStatus])
 }
 
 model PlanningResponsible {

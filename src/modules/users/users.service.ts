@@ -28,9 +28,9 @@ import { TenantService } from '../../shared/tenant/tenant.service';
 
 function montarRotuloResponsavelOs(
   name: string,
-  regional: { sgr: string; city: string } | null | undefined,
+  regional: { cgr: string; city: string } | null | undefined,
 ): string {
-  const nomeRegional = regional?.sgr?.trim() ?? '';
+  const nomeRegional = regional?.cgr?.trim() ?? '';
   const cidadeRegional = regional?.city?.trim() ?? '';
   const partes = [name.trim(), nomeRegional, cidadeRegional].filter(
     (parte) => parte.length > 0,
@@ -171,9 +171,6 @@ export class UsersService extends BaseUserService {
     // Transformar dados dos usuários
     const transformedData = users.map((user) => ({
       ...user,
-      permissions:
-        user.permissions?.map((permission: any) => permission.permissionType) ||
-        [],
     }));
 
     return {
@@ -204,9 +201,6 @@ export class UsersService extends BaseUserService {
     // Transforma os dados dos usuários para o formato esperado pelo frontend
     return users.map((user) => ({
       ...user,
-      permissions:
-        user.permissions?.map((permission: any) => permission.permissionType) ||
-        [],
     }));
   }
 
@@ -248,11 +242,8 @@ export class UsersService extends BaseUserService {
       company: {
         select: { id: true, name: true, cnpj: true, address: true },
       },
-      permissions: {
-        select: { permissionType: true },
-      },
       regional: {
-        select: { id: true, sgr: true, city: true },
+        select: { id: true, cgr: true, city: true, radiusKm: true },
       },
     };
 
@@ -280,9 +271,10 @@ export class UsersService extends BaseUserService {
       return {
         id: u.id,
         name: u.name,
+        role: u.role,
         label: montarRotuloResponsavelOs(u.name, regional),
         regionalId: u.regionalId,
-        regionalName: regional?.sgr ?? null,
+        regionalName: regional?.cgr ?? null,
         city: regional?.city ?? null,
       };
     });
