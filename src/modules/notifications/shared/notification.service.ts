@@ -25,14 +25,20 @@ export class NotificationService {
    * Criar uma notificação simples
    */
   async criar(data: CreateNotificationData): Promise<NotificationResponse | null> {
-    // 1. Determinar destinatários (usar os passados ou calcular automaticamente)
-    let targetUserIds =
-      data.recipients && data.recipients.length > 0
-        ? data.recipients
-        : await this.obterDestinatarios(data.companyId);
+    const hasExplicitRecipients =
+      Array.isArray(data.recipients) && data.recipients.length > 0;
 
-    // 2. Excluir o criador da notificação dos destinatários
-    targetUserIds = targetUserIds.filter(userId => userId !== data.userId);
+    // 1. Destinatários explícitos (ex.: atribuição de OS) ou broadcast para gestores
+    let targetUserIds = hasExplicitRecipients
+      ? [...data.recipients!]
+      : await this.obterDestinatarios(data.companyId);
+
+    // 2. Em broadcast automático, o autor não recebe a própria notificação.
+    // Com destinatários explícitos, não removemos o autor: atribuição a si mesmo
+    // ou ao mesmo usuário da ação ainda deve gerar in-app + push.
+    if (!hasExplicitRecipients) {
+      targetUserIds = targetUserIds.filter((userId) => userId !== data.userId);
+    }
 
     // 3. Se não há destinatários após filtrar, não criar notificação
     if (targetUserIds.length === 0) {

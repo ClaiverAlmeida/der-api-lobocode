@@ -5,6 +5,13 @@ import { PushNotificationService } from './push-notification.service';
 import { NotificationGateway } from '../notification.gateway';
 import { NotificationResponse } from './notification.types';
 
+function resolvePushUrl(notification: NotificationResponse): string {
+  if (notification.entityType === 'work-order' && notification.entityId) {
+    return `/work-orders?id=${encodeURIComponent(notification.entityId)}`;
+  }
+  return '/notifications';
+}
+
 @Injectable()
 export class NotificationChannelDeliveryService {
   private readonly logger = new Logger(NotificationChannelDeliveryService.name);
@@ -51,6 +58,7 @@ export class NotificationChannelDeliveryService {
     const emailRecipients = users.filter((u) => u.notificationEmail);
 
     if (pushRecipients.length > 0) {
+      const pushUrl = resolvePushUrl(notification);
       await this.pushNotificationService.sendPushNotificationToUsers(
         pushRecipients,
         {
@@ -62,7 +70,7 @@ export class NotificationChannelDeliveryService {
             entityType: notification.entityType,
             entityId: notification.entityId,
             notificationId: notification.id,
-            url: '/notifications',
+            url: pushUrl,
           },
         },
       );

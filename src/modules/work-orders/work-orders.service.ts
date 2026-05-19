@@ -52,6 +52,8 @@ export class WorkOrdersService extends UniversalService<
   private static readonly entityConfig = createEntityConfig('workOrder');
   private pendingCreateAssigneeIds: string[] = [];
   private pendingUpdateAssigneeIds: string[] | null = null;
+  /** Responsáveis antes de `assignedToUserIds` no PATCH (para notificar só os novos). */
+  private pendingPreviousAssigneeIds: string[] | null = null;
 
   private readonly detalhesInclude: any = {
     column: {
@@ -844,6 +846,7 @@ export class WorkOrdersService extends UniversalService<
     data: UpdateWorkOrderDto,
   ): Promise<void> {
     this.pendingUpdateAssigneeIds = null;
+    this.pendingPreviousAssigneeIds = null;
     const companyId = this.obterCompanyId();
     const ordemAtual = await this.repository.buscarPrimeiro('workOrder', {
       id: _id,
@@ -907,6 +910,12 @@ export class WorkOrdersService extends UniversalService<
     );
 
     if (payloadPossuiLista) {
+      const atuais = await this.prisma.workOrderAssignee.findMany({
+        where: { workOrderId: _id },
+        select: { userId: true },
+      });
+      this.pendingPreviousAssigneeIds = atuais.map((a) => a.userId);
+
       const responsaveis = await this.resolverResponsaveisDoPayload(data);
       this.pendingUpdateAssigneeIds = responsaveis.map(
         (responsavel) => responsavel.id,
@@ -997,8 +1006,35 @@ export class WorkOrdersService extends UniversalService<
       return;
     }
 
+    const previousIds = new Set(this.pendingPreviousAssigneeIds ?? []);
+    const newAssigneeIds = this.pendingUpdateAssigneeIds.filter(
+      (userId) => !previousIds.has(userId),
+    );
+
     await this.sincronizarResponsaveis(id, this.pendingUpdateAssigneeIds);
 
+    if (newAssigneeIds.length > 0) {
+      const ordem = await this.buscarOrdemPorId(id);
+      const workOrderTitle =
+        (ordem as { title?: string }).title?.trim() || `OS ${id}`;
+      const companyId =
+        (ordem as { companyId?: string }).companyId ??
+        this.obterCompanyId() ??
+        undefined;
+      const actorUserId = this.obterUsuarioLogadoId();
+
+      for (const assignedUserId of newAssigneeIds) {
+        await this.workOrderActivityNotificationService.notifyAssignment({
+          workOrderId: id,
+          workOrderTitle,
+          actorUserId: actorUserId ?? assignedUserId,
+          companyId,
+          assignedUserId,
+        });
+      }
+    }
+
+    this.pendingPreviousAssigneeIds = null;
     this.pendingUpdateAssigneeIds = null;
   }
 
@@ -1015,6 +1051,15 @@ export class WorkOrdersService extends UniversalService<
       await this.registrarComentarioAutomatico(data.id, 'OS criada.');
 
       if (this.pendingCreateAssigneeIds.length > 0) {
+        const ordemCriada = await this.prisma.workOrder.findUnique({
+          where: { id: data.id },
+          select: { title: true, companyId: true },
+        });
+        const workOrderTitle =
+          ordemCriada?.title?.trim() || `OS ${data.id}`;
+        const companyId =
+          ordemCriada?.companyId ?? this.obterCompanyId() ?? undefined;
+
         const responsaveis = await this.prisma.user.findMany({
           where: { id: { in: this.pendingCreateAssigneeIds } },
           select: { name: true },
@@ -1029,12 +1074,13 @@ export class WorkOrdersService extends UniversalService<
           `OS atribuída para: ${nomes}.`,
         );
 
+        const actorUserId = this.obterUsuarioLogadoId();
         for (const assignedUserId of this.pendingCreateAssigneeIds) {
           await this.workOrderActivityNotificationService.notifyAssignment({
             workOrderId: data.id,
-            workOrderTitle: `OS ${data.id}`,
-            actorUserId: this.obterUsuarioLogadoId() ?? assignedUserId,
-            companyId: this.obterCompanyId() ?? undefined,
+            workOrderTitle,
+            actorUserId: actorUserId ?? assignedUserId,
+            companyId,
             assignedUserId,
           });
         }
