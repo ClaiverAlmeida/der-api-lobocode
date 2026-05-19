@@ -244,12 +244,9 @@ model Asset {
   name            String
   code            String?
   type            AssetType
-  km              Float
   direction       String
   status          AssetStatus          @default(ONLINE)
   criticality     AssetCriticality     @default(MEDIUM)
-  latitude        Float?
-  longitude       Float?
   ipAddresses     Json?
   lastSignalAt    DateTime?
   connectionType  AssetConnectionType?
@@ -284,7 +281,9 @@ model Regional {
   color  String
   status RegionalStatus @default(ACTIVE)
 
-  /** Raio de atuação no mapa (quilômetros), em torno de latitude/longitude. */
+  /**
+   * Raio de atuação no mapa (quilômetros), em torno de latitude/longitude.
+   */
   radiusKm Float @default(55)
 
   latitude  Float?
@@ -315,7 +314,7 @@ model Location {
   id          String         @id @default(cuid())
   code        String
   name        String
-  uf          String
+  city        String
   referenceKm String
   status      RegionalStatus @default(ACTIVE)
   latitude    Float?
@@ -389,7 +388,7 @@ model WorkOrder {
   priority         WorkOrderPriority?
   status           WorkOrderStatus     @default(PENDING)
   type             WorkOrderType
-  dueDate          DateTime? @db.Date
+  dueDate          DateTime?           @db.Date
   startedAt        DateTime?
   completedAt      DateTime?
   slaDeadlineHours Int?

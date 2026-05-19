@@ -98,7 +98,7 @@ export class GlobalSearchService {
           where: {
             companyId: user.companyId,
             deletedAt: null,
-            OR: [{ name: contains }, { code: contains }, { uf: contains }],
+            OR: [{ name: contains }, { code: contains }, { city: contains }],
             AND: [accessibleBy(ability, 'read').Location],
           },
           select: { id: true, name: true, code: true, regional: { select: { city: true } } },

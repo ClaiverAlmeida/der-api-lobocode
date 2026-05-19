@@ -31,8 +31,8 @@ export class CreateLocationsDto {
   name: string;
 
   @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  @MaxLength(2, { message: VALIDATION_MESSAGES.LENGTH.MAX_LENGTH })
-  uf: string;
+  @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
+  city: string;
 
   @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
   @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })

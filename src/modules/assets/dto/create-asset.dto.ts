@@ -3,11 +3,9 @@ import {
   IsEnum,
   IsIP,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   IsUrl,
-  MaxLength,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -20,11 +18,11 @@ import {
 import { IsCUID } from '../../../shared/validators';
 import { VALIDATION_MESSAGES } from '../../../shared/common/messages';
 
+/**
+ * Endereço IP do equipamento. O rótulo (`name`) foi removido — o IPv4 é o
+ * próprio identificador único na lista.
+ */
 class AssetIpAddressDto {
-  @IsString({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
-  @MaxLength(120, { message: VALIDATION_MESSAGES.LENGTH.MAX_LENGTH })
-  name: string;
-
   @IsIP('4', { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   ip: string;
 }
@@ -51,10 +49,6 @@ export class CreateAssetDto {
   @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
   locationId: string;
 
-  @Type(() => Number)
-  @IsNumber({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  km: number;
-
   @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   direction: string;
 
@@ -69,16 +63,6 @@ export class CreateAssetDto {
     message: VALIDATION_MESSAGES.FORMAT.ENUM_INVALID,
   })
   criticality?: AssetCriticality;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  latitude?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  longitude?: number;
 
   @IsOptional()
   @IsEnum(AssetConnectionType, {
