@@ -22,6 +22,12 @@ function resolvePushUrl(notification: NotificationResponse): string {
     const id = encodeURIComponent(entityId);
     return `/schedule?tab=planning&planningId=${id}`;
   }
+  if (
+    (entityType === 'queue' || entityType === 'queue-unassignment') &&
+    entityId
+  ) {
+    return '/queues';
+  }
   return '/notifications';
 }
 

@@ -85,13 +85,18 @@ enum WorkOrderStatus {
 enum WorkOrderType {
   PREVENTIVE
   CORRECTIVE
-  TECHNICAL_REVIEW
+  GENERAL
 }
 
 enum WorkOrderSlaStatus {
   OK
   WARNING
   OVERDUE
+}
+
+enum QueueStatus {
+  ACTIVE
+  INACTIVE
 }
 
 // ===============================================
@@ -158,6 +163,7 @@ model Company {
   documents          Document[]          @relation("CompanyDocuments")
   notifications      Notification[]      @relation("CompanyNotifications")
   notificationGroups NotificationGroup[] @relation("CompanyNotificationGroups")
+  queues             Queue[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -193,6 +199,7 @@ model User {
   oauthAccounts           OAuthAccount[]
   workOrderPauseHistories WorkOrderPauseHistory[]
   planningAssignments     PlanningResponsible[]
+  queueUsers QueueUser[]
   files                   File[]                    @relation("UserFiles")
   documentsSent           Document[]                @relation("DocumentSender")
   notifications           NotificationRecipient[]   @relation("UserNotifications")
@@ -201,9 +208,9 @@ model User {
   workOrderComments       WorkOrderComment[]        @relation("WorkOrderCommentsAuthor")
   assignees               WorkOrderAssignee[]       @relation("UserWorkOrderAssignee")
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
 
   @@index([companyId])
   @@index([email])
@@ -324,12 +331,12 @@ model Location {
   latitude    Float?
   longitude   Float?
 
-  hasEdicule         Boolean @default(false)
-  ediculePostalCode  String?
-  ediculeStreet      String?
-  ediculeNumber      String?
-  ediculeCity        String?
-  ediculeLegalName   String?
+  hasEdicule        Boolean @default(false)
+  ediculePostalCode String?
+  ediculeStreet     String?
+  ediculeNumber     String?
+  ediculeCity       String?
+  ediculeLegalName  String?
 
   companyId String
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -555,6 +562,34 @@ model PlanningResponsible {
   @@unique([planningId, userId])
   @@index([planningId])
   @@index([userId])
+}
+
+model Queue {
+  id     String      @id @default(cuid())
+  title   String
+  status QueueStatus @default(ACTIVE)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  queueUsers QueueUser[]
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+
+  @@index([id])
+}
+
+model QueueUser {
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  queueId String
+  queue   Queue  @relation(fields: [queueId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([userId, queueId])
 }
 
 // ===============================================
