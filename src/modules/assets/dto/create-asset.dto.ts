@@ -3,11 +3,10 @@ import {
   IsEnum,
   IsIP,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   IsUrl,
-  MaxLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -20,11 +19,11 @@ import {
 import { IsCUID } from '../../../shared/validators';
 import { VALIDATION_MESSAGES } from '../../../shared/common/messages';
 
+/**
+ * Endereço IP do equipamento. O rótulo (`name`) foi removido — o IPv4 é o
+ * próprio identificador único na lista.
+ */
 class AssetIpAddressDto {
-  @IsString({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
-  @MaxLength(120, { message: VALIDATION_MESSAGES.LENGTH.MAX_LENGTH })
-  name: string;
-
   @IsIP('4', { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   ip: string;
 }
@@ -34,12 +33,38 @@ export class CreateAssetDto {
   @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
   companyId?: string;
 
-  @IsString({ message: VALIDATION_MESSAGES.REQUIRED.NAME })
-  name: string;
-
+  /** ATDB (ID) e PMV (nome); não usado em câmeras. */
+  @ValidateIf((o: CreateAssetDto) => o.type === AssetType.ATDB || o.type === AssetType.PMV)
+  @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @ValidateIf((o: CreateAssetDto) => o.type !== AssetType.ATDB && o.type !== AssetType.PMV)
   @IsOptional()
   @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  code?: string;
+  name?: string;
+
+  @ValidateIf((o: CreateAssetDto) => o.type === AssetType.CAMERA)
+  @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @ValidateIf((o: CreateAssetDto) => o.type !== AssetType.CAMERA)
+  @IsOptional()
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  manufacturer?: string;
+
+  @ValidateIf((o: CreateAssetDto) => o.type === AssetType.CAMERA)
+  @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @ValidateIf((o: CreateAssetDto) => o.type !== AssetType.CAMERA)
+  @IsOptional()
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  model?: string;
+
+  @ValidateIf((o: CreateAssetDto) => o.type === AssetType.CAMERA)
+  @IsNotEmpty({ message: VALIDATION_MESSAGES.REQUIRED.FIELD })
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  @ValidateIf((o: CreateAssetDto) => o.type !== AssetType.CAMERA)
+  @IsOptional()
+  @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
+  serialNumber?: string;
 
   @IsEnum(AssetType, {
     message: VALIDATION_MESSAGES.FORMAT.ENUM_INVALID,
@@ -51,12 +76,9 @@ export class CreateAssetDto {
   @IsCUID({ message: VALIDATION_MESSAGES.FORMAT.UUID_INVALID })
   locationId: string;
 
-  @Type(() => Number)
-  @IsNumber({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  km: number;
-
   @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  direction: string;
+  @IsOptional()
+  direction?: string;
 
   @IsOptional()
   @IsEnum(AssetStatus, {
@@ -69,16 +91,6 @@ export class CreateAssetDto {
     message: VALIDATION_MESSAGES.FORMAT.ENUM_INVALID,
   })
   criticality?: AssetCriticality;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  latitude?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({}, { message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
-  longitude?: number;
 
   @IsOptional()
   @IsEnum(AssetConnectionType, {
@@ -100,4 +112,3 @@ export class CreateAssetDto {
   @Type(() => AssetIpAddressDto)
   ipAddresses?: AssetIpAddressDto[];
 }
-

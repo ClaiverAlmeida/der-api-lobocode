@@ -5,6 +5,32 @@ import { PushNotificationService } from './push-notification.service';
 import { NotificationGateway } from '../notification.gateway';
 import { NotificationResponse } from './notification.types';
 
+function resolvePushUrl(notification: NotificationResponse): string {
+  const entityType = notification.entityType ?? '';
+  const entityId = notification.entityId;
+
+  if (
+    (entityType === 'work-order' || entityType === 'work-order-unassignment') &&
+    entityId
+  ) {
+    return `/work-orders?id=${encodeURIComponent(entityId)}`;
+  }
+  if (
+    (entityType === 'planning' || entityType === 'planning-unassignment') &&
+    entityId
+  ) {
+    const id = encodeURIComponent(entityId);
+    return `/schedule?tab=planning&planningId=${id}`;
+  }
+  if (
+    (entityType === 'queue' || entityType === 'queue-unassignment') &&
+    entityId
+  ) {
+    return '/queues';
+  }
+  return '/notifications';
+}
+
 @Injectable()
 export class NotificationChannelDeliveryService {
   private readonly logger = new Logger(NotificationChannelDeliveryService.name);
@@ -51,6 +77,7 @@ export class NotificationChannelDeliveryService {
     const emailRecipients = users.filter((u) => u.notificationEmail);
 
     if (pushRecipients.length > 0) {
+      const pushUrl = resolvePushUrl(notification);
       await this.pushNotificationService.sendPushNotificationToUsers(
         pushRecipients,
         {
@@ -62,7 +89,7 @@ export class NotificationChannelDeliveryService {
             entityType: notification.entityType,
             entityId: notification.entityId,
             notificationId: notification.id,
-            url: '/notifications',
+            url: pushUrl,
           },
         },
       );

@@ -30,6 +30,7 @@ export type PermissionResource =
       WorkOrderColumn: any;
       WorkOrderChecklistItem: any;
       Planning: any;
+      Queue: any;
     }>
   | 'all';
 
@@ -98,7 +99,7 @@ const administrativePermissions = {
       companyId: user.companyId,
       role: { in: allowedRoles },
     });
-    
+
   },
 
   resourceManagement: (user: User, { can }: any) => {
@@ -134,6 +135,13 @@ const specificPermissions = {
     can(['read'], 'Planning', {
       companyId: user.companyId,
     });
+  },
+  queuesManage: (user: User, { can }: any) => {
+    can('manage', 'Queue', { companyId: user.companyId });
+  },
+  /** Listagem/leitura de filas (ex.: picker em OS) — sem criar/editar/excluir filas. */
+  queuesRead: (user: User, { can }: any) => {
+    can('read', 'Queue', { companyId: user.companyId });
   },
 };
 
@@ -209,6 +217,7 @@ function aplicarRestricoesRegionaisNaoAdmin(user: User, { cannot }: any) {
     cannot('read', 'WorkOrder', { companyId: c });
     for (const action of ['create', 'update', 'delete'] as const) {
       cannot(action, 'Regional', { companyId: c });
+      cannot(action, 'Queue', { companyId: c });
       cannot(action, 'Location', { companyId: c });
       cannot(action, 'Asset', { companyId: c });
       cannot(action, 'WorkOrder', { companyId: c });
@@ -222,7 +231,18 @@ function aplicarRestricoesRegionaisNaoAdmin(user: User, { cannot }: any) {
 
   const r = user.regionalId;
   const workOrderPermitidoForaRegional = {
-    OR: [{ location: { regionalId: r } }, { assignees: { some: { userId: user.id } } }],
+    OR: [
+      { location: { regionalId: r } },
+      {
+        workOrderQueues: {
+          some: {
+            queue: {
+              queueUsers: { some: { userId: user.id } },
+            },
+          },
+        },
+      },
+    ],
   };
 
   cannot('read', 'Regional', { companyId: c, NOT: { id: r } });
@@ -235,6 +255,7 @@ function aplicarRestricoesRegionaisNaoAdmin(user: User, { cannot }: any) {
     companyId: c,
     NOT: workOrderPermitidoForaRegional,
   });
+  cannot(['create', 'update', 'delete'], 'Queue', { companyId: c });
 
   for (const action of ['create', 'update', 'delete'] as const) {
     cannot(action, 'Regional', { companyId: c, NOT: { id: r } });
@@ -358,6 +379,10 @@ function aplicarRestricoesSoftDeleteEmCascata({ cannot }: any) {
       },
     ],
   });
+
+  cannot(['read', 'update', 'delete'], 'Queue', {
+    OR: [{ company: { deletedAt: { not: null } } }, { deletedAt: { not: null } }],
+  });
 }
 
 const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
@@ -377,6 +402,7 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     administrativePermissions.reporting(user, { can });
     specificPermissions.notifications(user, { can });
     specificPermissions.workOrdersManage(user, { can });
+    specificPermissions.queuesManage(user, { can });
   },
 
   FIELD_TEAM: (user: User, { can, cannot }: any) => {
@@ -388,6 +414,10 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     specificPermissions.workOrderColumnsManage(user, { can });
     specificPermissions.planningManage(user, { can });
     aplicarRestricaoGestaoEquipe(user, { cannot });
+    specificPermissions.queuesRead(user, { can });
+    cannot(['create', 'update', 'delete'], 'Queue', {
+      companyId: user.companyId,
+    });
   },
 
   C2C: (user: User, { can, cannot }: any) => {
@@ -399,6 +429,10 @@ const rolePermissionsMap: Record<Roles, (user: User, builder: any) => void> = {
     specificPermissions.workOrderColumnsManage(user, { can });
     specificPermissions.planningManage(user, { can });
     aplicarRestricaoGestaoEquipeC2c(user, { can, cannot });
+    specificPermissions.queuesRead(user, { can });
+    cannot(['create', 'update', 'delete'], 'Queue', {
+      companyId: user.companyId,
+    });
   },
 };
 

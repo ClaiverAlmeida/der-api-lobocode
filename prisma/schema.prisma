@@ -85,13 +85,18 @@ enum WorkOrderStatus {
 enum WorkOrderType {
   PREVENTIVE
   CORRECTIVE
-  TECHNICAL_REVIEW
+  GENERAL
 }
 
 enum WorkOrderSlaStatus {
   OK
   WARNING
   OVERDUE
+}
+
+enum QueueStatus {
+  ACTIVE
+  INACTIVE
 }
 
 // ===============================================
@@ -158,6 +163,7 @@ model Company {
   documents          Document[]          @relation("CompanyDocuments")
   notifications      Notification[]      @relation("CompanyNotifications")
   notificationGroups NotificationGroup[] @relation("CompanyNotificationGroups")
+  queues             Queue[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -193,17 +199,17 @@ model User {
   oauthAccounts           OAuthAccount[]
   workOrderPauseHistories WorkOrderPauseHistory[]
   planningAssignments     PlanningResponsible[]
+  queueUsers QueueUser[]
   files                   File[]                    @relation("UserFiles")
   documentsSent           Document[]                @relation("DocumentSender")
   notifications           NotificationRecipient[]   @relation("UserNotifications")
   groupMemberships        NotificationGroupMember[] @relation("UserGroupMemberships")
   pushSubscriptions       PushSubscription[]        @relation("UserPushSubscriptions")
   workOrderComments       WorkOrderComment[]        @relation("WorkOrderCommentsAuthor")
-  assignees               WorkOrderAssignee[]       @relation("UserWorkOrderAssignee")
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
 
   @@index([companyId])
   @@index([email])
@@ -239,17 +245,18 @@ model OAuthAccount {
 // ===============================================
 
 model Asset {
-  id              String               @id @default(cuid())
-  companyId       String
-  name            String
-  code            String?
+  id        String @id @default(cuid())
+  companyId String
+
+  name         String?
+  manufacturer String?
+  model        String?
+  serialNumber String?
+
   type            AssetType
-  km              Float
-  direction       String
+  direction       String?
   status          AssetStatus          @default(ONLINE)
   criticality     AssetCriticality     @default(MEDIUM)
-  latitude        Float?
-  longitude       Float?
   ipAddresses     Json?
   lastSignalAt    DateTime?
   connectionType  AssetConnectionType?
@@ -284,7 +291,9 @@ model Regional {
   color  String
   status RegionalStatus @default(ACTIVE)
 
-  /** Raio de atuação no mapa (quilômetros), em torno de latitude/longitude. */
+  /**
+   * Raio de atuação no mapa (quilômetros), em torno de latitude/longitude.
+   */
   radiusKm Float @default(55)
 
   latitude  Float?
@@ -315,11 +324,18 @@ model Location {
   id          String         @id @default(cuid())
   code        String
   name        String
-  uf          String
+  city        String
   referenceKm String
   status      RegionalStatus @default(ACTIVE)
   latitude    Float?
   longitude   Float?
+
+  hasEdicule        Boolean @default(false)
+  ediculePostalCode String?
+  ediculeStreet     String?
+  ediculeNumber     String?
+  ediculeCity       String?
+  ediculeLegalName  String?
 
   companyId String
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -363,17 +379,17 @@ model WorkOrderColumn {
   @@index([sortOrder])
 }
 
-model WorkOrderAssignee {
+model WorkOrderQueue {
   id          String    @id @default(cuid())
-  userId      String
-  user        User      @relation("UserWorkOrderAssignee", fields: [userId], references: [id], onDelete: Cascade)
   workOrderId String
-  workOrder   WorkOrder @relation("WorkOrderAssignees", fields: [workOrderId], references: [id], onDelete: Cascade)
+  workOrder   WorkOrder @relation("WorkOrderQueues", fields: [workOrderId], references: [id], onDelete: Cascade)
+  queueId     String
+  queue       Queue     @relation(fields: [queueId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
 
-  @@unique([workOrderId, userId])
-  @@index([userId])
+  @@unique([workOrderId, queueId])
   @@index([workOrderId])
+  @@index([queueId])
 }
 
 // ===============================================
@@ -389,7 +405,7 @@ model WorkOrder {
   priority         WorkOrderPriority?
   status           WorkOrderStatus     @default(PENDING)
   type             WorkOrderType
-  dueDate          DateTime? @db.Date
+  dueDate          DateTime?           @db.Date
   startedAt        DateTime?
   completedAt      DateTime?
   slaDeadlineHours Int?
@@ -404,7 +420,7 @@ model WorkOrder {
 
   company   Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
   location  Location            @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  assignees WorkOrderAssignee[] @relation("WorkOrderAssignees")
+  workOrderQueues WorkOrderQueue[] @relation("WorkOrderQueues")
 
   checklistItems WorkOrderChecklistItem[]
   comments       WorkOrderComment[]
@@ -545,6 +561,35 @@ model PlanningResponsible {
   @@unique([planningId, userId])
   @@index([planningId])
   @@index([userId])
+}
+
+model Queue {
+  id     String      @id @default(cuid())
+  title   String
+  status QueueStatus @default(ACTIVE)
+
+  companyId String
+  company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  queueUsers     QueueUser[]
+  workOrderQueues WorkOrderQueue[]
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+
+  @@index([id])
+}
+
+model QueueUser {
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  queueId String
+  queue   Queue  @relation(fields: [queueId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, queueId])
 }
 
 // ===============================================

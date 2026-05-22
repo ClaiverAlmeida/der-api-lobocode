@@ -51,6 +51,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { NotificationModule } from './modules/notifications/notification.module';
 import { AssetsModule } from './modules/assets/assets.module';
 import { RegionalsModule } from './modules/regionals/regionals.module';
+import { QueuesModule } from './modules/queues/queues.module';
 import { LocationsModule } from './modules/locations/locations.module';
 import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
 import { OperationalDashboardModule } from './modules/operational-dashboard/operational-dashboard.module';
@@ -80,6 +81,7 @@ import { GlobalSearchModule } from './modules/global-search/global-search.module
     NotificationModule,
     AssetsModule,
     RegionalsModule,
+    QueuesModule,
     LocationsModule,
     WorkOrdersModule,
     OperationalDashboardModule,
