@@ -36,15 +36,11 @@ export class AuthValidator {
 
     // Verifica se o usuário está ativo
     if (user.status !== 'ACTIVE') {
-      throw new UnauthorizedError(
-        this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'),
-      );
+      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'));
     }
 
     if (user.deletedAt !== null) {
-      throw new UnauthorizedError(
-        this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'),
-      );
+      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'DELETED'));
     }
 
     if (!user.password) {
@@ -88,15 +84,11 @@ export class AuthValidator {
     }
 
     if (user.status !== 'ACTIVE') {
-      throw new UnauthorizedError(
-        this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'),
-      );
+      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'));
     }
 
     if (user.deletedAt !== null) {
-      throw new UnauthorizedError(
-        this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'),
-      );
+      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'DELETED'));
     }
 
     return user;
@@ -117,15 +109,11 @@ export class AuthValidator {
     }
 
     if (user.status !== 'ACTIVE') {
-      throw new BadRequestException(
-        this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'),
-      );
+      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'));
     }
 
     if (user.deletedAt !== null) {
-      throw new UnauthorizedError(
-        this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'),
-      );
+      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'DELETED'));
     }
 
     return user;
