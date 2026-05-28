@@ -1,4 +1,4 @@
-import { Inject, Injectable, Optional, Scope } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, Optional, Scope } from '@nestjs/common';
 import { REQUEST } from '@nestjs/core';
 import {
   UniversalMetricsService,
@@ -133,6 +133,11 @@ export class WorkOrdersIntegrationService extends UniversalService<
       { orderBy: defaultOrderBy },
       includeConfig,
     );
+
+    if(entities.length === 0 || !entities) {
+      throw new NotFoundException('Nenhuma ordem de serviço encontrada');
+    }
+
     return this.transformData(entities);
   }
 
@@ -143,7 +148,9 @@ export class WorkOrdersIntegrationService extends UniversalService<
       { ...this.getWherePublicoBase(), id },
       includeConfig,
     );
+
     this.validarResultadoDaBusca(entity, this.entityName, 'id', id);
+
     return { data: this.transformData(entity) };
   }
 
@@ -154,6 +161,9 @@ export class WorkOrdersIntegrationService extends UniversalService<
       { ...this.getWherePublicoBase(), [field]: value },
       includeConfig,
     );
+
+    this.validarResultadoDaBusca(entity, this.entityName, field, value);
+
     return { data: this.transformData(entity) };
   }
 }
