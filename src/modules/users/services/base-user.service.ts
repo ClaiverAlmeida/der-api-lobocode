@@ -7,7 +7,10 @@ import { UpdateUserDto } from '../dto/update-user.dto';
 import { Prisma, Roles } from '@prisma/client';
 import { CrudAction } from '../../../shared/common/types';
 import { NotFoundError, ConflictError } from '../../../shared/common/errors';
-import { SUCCESS_MESSAGES } from '../../../shared/common/messages';
+import {
+  SUCCESS_MESSAGES,
+  VALIDATION_MESSAGES,
+} from '../../../shared/common/messages';
 import { CreateOthersDto } from '../dto/create-others.dto';
 import bcrypt from 'bcrypt';
 
@@ -314,6 +317,20 @@ export class BaseUserService {
   }
 
   /**
+   * Valida email e login antes de criar usuário (evita P2002 do Prisma).
+   */
+  protected async validarUnicidadeParaCriacao(email: string, login?: string) {
+    const emailNormalizado = email.trim().toLowerCase();
+    const loginNormalizado = (login ?? email).trim().toLowerCase();
+
+    await this.validarSeEmailEhUnico(emailNormalizado);
+
+    if (loginNormalizado !== emailNormalizado) {
+      await this.validarSeLoginEhUnico(loginNormalizado);
+    }
+  }
+
+  /**
    * Valida se email é único
    */
   protected async validarSeEmailEhUnico(email: string, excludeUserId?: string) {
@@ -324,7 +341,7 @@ export class BaseUserService {
     });
 
     if (existingUser) {
-      throw new ConflictError('Email já está em uso');
+      throw new ConflictError(VALIDATION_MESSAGES.UNIQUENESS.EMAIL_EXISTS);
     }
   }
 
@@ -333,15 +350,15 @@ export class BaseUserService {
    */
   protected async validarSeLoginEhUnico(login: string, excludeUserId?: string) {
     if (!login) return;
-    
+
     const normalizedLogin = login.trim().toLowerCase();
     const existingUser = await this.userRepository.buscarPrimeiro({
       login: normalizedLogin,
       ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
     });
-    
+
     if (existingUser) {
-      throw new ConflictError('Este login já está cadastrado no sistema');
+      throw new ConflictError(VALIDATION_MESSAGES.UNIQUENESS.LOGIN_EXISTS);
     }
   }
 
