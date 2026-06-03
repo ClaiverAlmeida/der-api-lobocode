@@ -7,6 +7,7 @@ export enum AuthEventType {
   LOGOUT = 'LOGOUT',
   LOGOUT_ALL = 'LOGOUT_ALL',
   PASSWORD_RESET_REQUEST = 'PASSWORD_RESET_REQUEST',
+  PASSWORD_RESET_VALIDATE = 'PASSWORD_RESET_VALIDATE',
   PASSWORD_RESET_COMPLETE = 'PASSWORD_RESET_COMPLETE',
   PASSWORD_CHANGE = 'PASSWORD_CHANGE',
   LOGIN_FAILED = 'LOGIN_FAILED',
@@ -115,17 +116,36 @@ export class AuditService {
   async logPasswordReset(
     userId: string,
     request: Request,
-    eventType: 'request' | 'complete'
+    eventType: 'request' | 'validate' | 'complete',
   ): Promise<void> {
+    const eventTypeMap: Record<typeof eventType, AuthEventType> = {
+      request: AuthEventType.PASSWORD_RESET_REQUEST,
+      validate: AuthEventType.PASSWORD_RESET_VALIDATE,
+      complete: AuthEventType.PASSWORD_RESET_COMPLETE,
+    };
+
     await this.logAuthEvent({
       userId,
-      eventType: eventType === 'request' 
-        ? AuthEventType.PASSWORD_RESET_REQUEST 
-        : AuthEventType.PASSWORD_RESET_COMPLETE,
+      eventType: eventTypeMap[eventType],
       ipAddress: this.getClientIp(request),
       userAgent: request.headers['user-agent'] || 'Unknown',
       success: true,
       details: { resetType: eventType },
+    });
+  }
+
+  async logPasswordResetFailure(
+    request: Request,
+    eventType: 'request' | 'validate' | 'complete',
+    email?: string,
+  ): Promise<void> {
+    await this.logAuthEvent({
+      eventType: AuthEventType.PASSWORD_RESET_REQUEST,
+      ipAddress: this.getClientIp(request),
+      userAgent: request.headers['user-agent'] || 'Unknown',
+      success: false,
+      details: { resetType: eventType, emailDomain: email?.split('@')[1] },
+      errorMessage: 'Password reset step failed',
     });
   }
 

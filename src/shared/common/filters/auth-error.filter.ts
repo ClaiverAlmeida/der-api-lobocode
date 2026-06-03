@@ -37,9 +37,22 @@ export class AuthErrorFilter extends BaseExceptionFilter implements ExceptionFil
     } else if (message.includes(AUTH_MESSAGES.VALIDATION.TOKEN_REQUIRED)) {
       errorCode = 'TOKEN_REQUIRED';
       clientMessage = this.messagesService.getErrorMessage('AUTH', 'UNAUTHORIZED');
-    } else if (message.includes(AUTH_MESSAGES.ERROR.INVALID_CREDENTIALS)) {
+    } else if (
+      message.includes(AUTH_MESSAGES.ERROR.INVALID_CREDENTIALS) ||
+      message.includes(AUTH_MESSAGES.ERROR.USER_INACTIVE) ||
+      message.includes(AUTH_MESSAGES.ERROR.USER_NOT_FOUND) ||
+      message.includes(
+        this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'),
+      ) ||
+      message.includes(
+        this.messagesService.getErrorMessage('RESOURCE', 'DELETED'),
+      )
+    ) {
       errorCode = 'INVALID_CREDENTIALS';
-      clientMessage = this.messagesService.getErrorMessage('AUTH', 'INVALID_CREDENTIALS');
+      clientMessage = this.messagesService.getErrorMessage(
+        'AUTH',
+        'INVALID_CREDENTIALS',
+      );
     }
 
     this.sendErrorResponse(

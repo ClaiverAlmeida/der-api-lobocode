@@ -16,10 +16,11 @@ import {
   RefreshDto,
   LogoutDto,
   ForgotPasswordDto,
-  ValidateResetTokenDto,
-  ResetPasswordDto,
   ChangeMyPasswordDto,
+  ValidateForgotPasswordTokenDto,
+  ForgotPasswordResetDto,
 } from './dto';
+import { AUTH_MESSAGES } from './constants';
 import { AuthService } from './services';
 import { AuthGuard, RefreshGuard, RateLimitGuard } from './guards';
 import { RoleGuard } from './guards/role.guard';
@@ -217,38 +218,43 @@ export class AuthController {
    */
   @Post('forgot-password')
   @Public()
+  @UseGuards(RateLimitGuard)
   async forgotPassword(
     @Body() dto: ForgotPasswordDto,
+    @Req() request: Request,
   ): Promise<{ message: string }> {
-    await this.passwordResetService.requestPasswordReset(dto);
+    await this.passwordResetService.requestPasswordReset(dto, request);
     return {
-      message: this.messagesService.getSuccessMessage('OPERATIONS', 'EMAIL_SENT'),
+      message: AUTH_MESSAGES.SUCCESS.PASSWORD_RESET_REQUESTED,
     };
   }
 
   /**
-   * Valida token de reset
+   * Valida token de recuperação de senha
    */
-  @Post('validate-reset-token')
+  @Post('forgot-password/validate-token')
   @Public()
-  async validateResetToken(
-    @Body() dto: ValidateResetTokenDto,
-  ): Promise<{ isValid: boolean }> {
-    const isValid = await this.passwordResetService.validateResetToken(dto);
-    return { isValid };
+  @UseGuards(RateLimitGuard)
+  async validateForgotPasswordToken(
+    @Body() dto: ValidateForgotPasswordTokenDto,
+    @Req() request: Request,
+  ): Promise<{ valid: true }> {
+    return this.passwordResetService.validateResetToken(dto, request);
   }
 
   /**
-   * Reseta senha
+   * Redefine senha com token de recuperação
    */
-  @Post('reset-password')
+  @Post('forgot-password/reset')
   @Public()
-  async resetPassword(
-    @Body() dto: ResetPasswordDto,
+  @UseGuards(RateLimitGuard)
+  async resetForgotPassword(
+    @Body() dto: ForgotPasswordResetDto,
+    @Req() request: Request,
   ): Promise<{ message: string }> {
-    await this.passwordResetService.resetPassword(dto);
-    return { 
-      message: this.messagesService.getSuccessMessage('OPERATIONS', 'PASSWORD_CHANGED')
+    await this.passwordResetService.resetPassword(dto, request);
+    return {
+      message: AUTH_MESSAGES.SUCCESS.PASSWORD_RESET_SUCCESS,
     };
   }
 

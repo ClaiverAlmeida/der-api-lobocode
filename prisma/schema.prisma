@@ -224,6 +224,7 @@ model User {
 
   workOrdersCreated WorkOrder[] @relation("WorkOrdersCreatedBy")
   workOrdersUpdated WorkOrder[] @relation("WorkOrdersUpdatedBy")
+  passwordResetTokens PasswordResetToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -235,6 +236,23 @@ model User {
   @@index([deletedAt])
   @@index([role])
   @@index([createdAt])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([token])
+  @@index([email])
+  @@index([userId])
 }
 
 // Contas OAuth vinculadas ao usuário (Google, Microsoft)

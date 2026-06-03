@@ -48,12 +48,13 @@ export const AUTH_MESSAGES = {
     LOGIN: 'Login realizado com sucesso',
     LOGOUT: 'Logout realizado com sucesso',
     REFRESH: 'Token renovado com sucesso',
-    PASSWORD_RESET_REQUESTED: 'Email de recuperação enviado',
-    PASSWORD_RESET_SUCCESS: 'Senha alterada com sucesso',
+    PASSWORD_RESET_REQUESTED:
+      'Solicitação recebida. Verifique sua caixa de entrada e a pasta de spam para continuar a redefinição de senha.',
+    PASSWORD_RESET_SUCCESS: 'Senha alterada com sucesso.',
   },
 
   ERROR: {
-    INVALID_CREDENTIALS: 'Email ou senha inválidos',
+    INVALID_CREDENTIALS: 'Credenciais inválidas',
     TOKEN_EXPIRED: 'Token expirado. Faça login novamente',
     TOKEN_INVALID: 'Token inválido',
     REFRESH_TOKEN_INVALID: 'Refresh token inválido',
@@ -62,9 +63,11 @@ export const AUTH_MESSAGES = {
     USER_INACTIVE: 'Usuário inativo',
     TOO_MANY_ATTEMPTS: 'Muitas tentativas. Tente novamente em alguns minutos',
     EMAIL_NOT_FOUND: 'Email não encontrado no sistema',
-    RESET_TOKEN_INVALID: 'Token de recuperação inválido',
+    RESET_TOKEN_INVALID: 'Token inválido ou expirado.',
     RESET_TOKEN_EXPIRED: 'Token de recuperação expirado',
     PASSWORDS_DONT_MATCH: 'As senhas não coincidem',
+    PASSWORD_RESET_EMAIL_FAILED:
+      'Não foi possível enviar o e-mail de recuperação.',
   },
 
   VALIDATION: {
@@ -75,6 +78,12 @@ export const AUTH_MESSAGES = {
   },
 };
 
-// Password Reset
-export const PASSWORD_RESET_EXPIRATION = 3600; // 1 hora em segundos
-export const PASSWORD_RESET_PREFIX = 'password_reset'; 
+// Password Reset (tokens persistidos no banco)
+export const PASSWORD_RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+export const PASSWORD_RESET_TOKEN_LENGTH = 6;
+export const PASSWORD_RESET_LOGO_URL =
+  'https://der-app.lobocode.com.br/assets/der-logo-KBfudeo_.png';
+export const PASSWORD_RESET_RATE_LIMIT = {
+  MAX_ATTEMPTS: 10,
+  WINDOW_MS: 60 * 60 * 1000,
+};

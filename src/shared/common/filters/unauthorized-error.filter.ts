@@ -10,6 +10,21 @@ export class UnauthorizedErrorFilter extends BaseExceptionFilter implements Exce
   }
 
   catch(exception: UnauthorizedError, host: ArgumentsHost) {
+    const invalidCredentials = this.resolveInvalidCredentialsFailure(
+      exception.message,
+    );
+
+    if (invalidCredentials) {
+      this.sendErrorResponse(
+        exception,
+        host,
+        HttpStatus.UNAUTHORIZED,
+        invalidCredentials.errorCode,
+        invalidCredentials.message,
+      );
+      return;
+    }
+
     this.sendErrorResponse(
       exception,
       host,

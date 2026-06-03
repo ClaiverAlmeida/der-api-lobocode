@@ -39,14 +39,24 @@ export class HttpExceptionFilter
     let clientMessage = this.messagesService.getHttpErrorMessage(500);
 
     switch (status) {
-      case HttpStatus.BAD_REQUEST:
+      case HttpStatus.BAD_REQUEST: {
         errorCode = 'BAD_REQUEST';
         const validationDetails = this.extractValidationErrors(exception);
-        clientMessage =
-          validationDetails ||
-          this.messagesService.getErrorMessage('VALIDATION', 'INVALID_DATA');
-        exception.message = clientMessage ?? exception.message;
+        const invalidCredentials = this.resolveInvalidCredentialsFailure(
+          validationDetails || message,
+        );
+
+        if (invalidCredentials) {
+          errorCode = invalidCredentials.errorCode;
+          clientMessage = invalidCredentials.message;
+        } else {
+          clientMessage =
+            validationDetails ||
+            message ||
+            this.messagesService.getErrorMessage('VALIDATION', 'INVALID_DATA');
+        }
         break;
+      }
       case HttpStatus.NOT_FOUND:
         errorCode = 'NOT_FOUND';
         clientMessage = this.messagesService.getErrorMessage(
@@ -54,6 +64,24 @@ export class HttpExceptionFilter
           'NOT_FOUND',
         );
         break;
+      case HttpStatus.UNAUTHORIZED: {
+        const validationDetails = this.extractValidationErrors(exception);
+        const invalidCredentials = this.resolveInvalidCredentialsFailure(
+          validationDetails || message,
+        );
+
+        if (invalidCredentials) {
+          errorCode = invalidCredentials.errorCode;
+          clientMessage = invalidCredentials.message;
+        } else {
+          errorCode = 'UNAUTHORIZED';
+          clientMessage =
+            validationDetails ||
+            message ||
+            this.messagesService.getHttpErrorMessage(401);
+        }
+        break;
+      }
       case HttpStatus.FORBIDDEN:
         errorCode = 'FORBIDDEN';
         clientMessage = this.messagesService.getErrorMessage(
@@ -70,7 +98,10 @@ export class HttpExceptionFilter
         break;
       case HttpStatus.TOO_MANY_REQUESTS:
         errorCode = 'RATE_LIMIT_EXCEEDED';
-        clientMessage = this.messagesService.getHttpErrorMessage(429);
+        clientMessage =
+          this.extractValidationErrors(exception) ||
+          message ||
+          this.messagesService.getHttpErrorMessage(429);
         break;
       case HttpStatus.INTERNAL_SERVER_ERROR:
         errorCode = 'INTERNAL_SERVER_ERROR';

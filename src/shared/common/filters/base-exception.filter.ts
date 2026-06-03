@@ -45,6 +45,41 @@ export abstract class BaseExceptionFilter {
   }
 
   /**
+   * Inativo, soft-delete ou falha de credenciais → mensagem única no cliente.
+   */
+  protected resolveInvalidCredentialsFailure(
+    rawMessage: string | null | undefined,
+  ): { errorCode: 'INVALID_CREDENTIALS'; message: string } | null {
+    if (!rawMessage?.trim()) {
+      return null;
+    }
+
+    const clientMessage = this.messagesService.getErrorMessage(
+      'AUTH',
+      'INVALID_CREDENTIALS',
+    );
+    const matchMessages = [
+      AUTH_MESSAGES.ERROR.INVALID_CREDENTIALS,
+      clientMessage,
+      AUTH_MESSAGES.ERROR.USER_INACTIVE,
+      AUTH_MESSAGES.ERROR.USER_NOT_FOUND,
+      this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'),
+      this.messagesService.getErrorMessage('RESOURCE', 'DELETED'),
+    ];
+
+    const normalized = rawMessage.trim();
+    const isMatch = matchMessages.some(
+      (candidate) => normalized === candidate || normalized.includes(candidate),
+    );
+
+    if (!isMatch) {
+      return null;
+    }
+
+    return { errorCode: 'INVALID_CREDENTIALS', message: clientMessage };
+  }
+
+  /**
    * Retorna resposta padronizada para qualquer erro
    */
   protected sendErrorResponse(

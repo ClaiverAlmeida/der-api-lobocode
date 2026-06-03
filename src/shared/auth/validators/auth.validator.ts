@@ -34,13 +34,10 @@ export class AuthValidator {
       );
     }
 
-    // Verifica se o usuário está ativo
-    if (user.status !== 'ACTIVE') {
-      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'));
-    }
-
-    if (user.deletedAt !== null) {
-      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'DELETED'));
+    if (user.status !== 'ACTIVE' || user.deletedAt !== null) {
+      throw new UnauthorizedError(
+        this.messagesService.getErrorMessage('AUTH', 'INVALID_CREDENTIALS'),
+      );
     }
 
     if (!user.password) {
@@ -83,39 +80,13 @@ export class AuthValidator {
       );
     }
 
-    if (user.status !== 'ACTIVE') {
-      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'));
-    }
-
-    if (user.deletedAt !== null) {
-      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'DELETED'));
-    }
-
-    return user;
-  }
-
-  /**
-   * Valida se o email existe e está ativo para reset de senha
-   */
-  async validateEmailForReset(email: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
-      select: { id: true, email: true, name: true, status: true, deletedAt: true },
-    });
-
-    if (!user) {
-      // Por segurança, não revelamos se o email existe ou não
-      return null;
-    }
-
-    if (user.status !== 'ACTIVE') {
-      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'INACTIVE'));
-    }
-
-    if (user.deletedAt !== null) {
-      throw new BadRequestException(this.messagesService.getErrorMessage('RESOURCE', 'DELETED'));
+    if (user.status !== 'ACTIVE' || user.deletedAt !== null) {
+      throw new UnauthorizedError(
+        this.messagesService.getErrorMessage('AUTH', 'INVALID_CREDENTIALS'),
+      );
     }
 
     return user;
   }
+
 }

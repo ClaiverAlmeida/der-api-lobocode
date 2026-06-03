@@ -92,21 +92,23 @@ Content-Type: {{contentType}}
   "email": "admin@departamento-estadual-rodovias.com"
 }
 
-### 3.2 Validate Reset Token - Validar token de reset
-POST {{baseUrl}}/auth/validate-reset-token
+### 3.2 Validate Reset Token - Validar token de recuperação
+POST {{baseUrl}}/auth/forgot-password/validate-token
 Content-Type: {{contentType}}
 
 {
+  "email": "admin@departamento-estadual-rodovias.com",
   "token": "{{resetToken}}"
 }
 
-### 3.3 Reset Password - Resetar senha
-POST {{baseUrl}}/auth/reset-password
+### 3.3 Reset Password - Redefinir senha com token
+POST {{baseUrl}}/auth/forgot-password/reset
 Content-Type: {{contentType}}
 
 {
+  "email": "admin@departamento-estadual-rodovias.com",
   "token": "{{resetToken}}",
-  "newPassword": "NovaSenha123!",
+  "password": "NovaSenha123!",
   "confirmPassword": "NovaSenha123!"
 }
 
@@ -202,21 +204,23 @@ Content-Type: {{contentType}}
 
 ###
 # Passo 2: Validar token (pegar do email)
-POST {{baseUrl}}/auth/validate-reset-token
+POST {{baseUrl}}/auth/forgot-password/validate-token
 Content-Type: {{contentType}}
 
 {
+  "email": "teste@departamento-estadual-rodovias.com",
   "token": "token_do_email_aqui"
 }
 
 ###
 # Passo 3: Resetar senha
-POST {{baseUrl}}/auth/reset-password
+POST {{baseUrl}}/auth/forgot-password/reset
 Content-Type: {{contentType}}
 
 {
+  "email": "teste@departamento-estadual-rodovias.com",
   "token": "token_do_email_aqui",
-  "newPassword": "NovaSenha123!",
+  "password": "NovaSenha123!",
   "confirmPassword": "NovaSenha123!"
 }
 
@@ -282,22 +286,24 @@ Content-Type: {{contentType}}
 }
 
 ### 9.2 Validação - Senha muito fraca
-POST {{baseUrl}}/auth/reset-password
+POST {{baseUrl}}/auth/forgot-password/reset
 Content-Type: {{contentType}}
 
 {
+  "email": "admin@departamento-estadual-rodovias.com",
   "token": "token_valido",
-  "newPassword": "123",
+  "password": "123",
   "confirmPassword": "123"
 }
 
 ### 9.3 Validação - Senhas não coincidem
-POST {{baseUrl}}/auth/reset-password
+POST {{baseUrl}}/auth/forgot-password/reset
 Content-Type: {{contentType}}
 
 {
+  "email": "admin@departamento-estadual-rodovias.com",
   "token": "token_valido",
-  "newPassword": "NovaSenha123!",
+  "password": "NovaSenha123!",
   "confirmPassword": "SenhasDiferentes123!"
 }
 
