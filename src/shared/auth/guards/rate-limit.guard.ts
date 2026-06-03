@@ -1,16 +1,23 @@
 import {
   CanActivate,
   ExecutionContext,
+  HttpException,
+  HttpStatus,
   Injectable,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { AUTH_MESSAGES, AUTH_CONSTANTS } from '../constants';
+import { AUTH_MESSAGES, AUTH_CONSTANTS, PASSWORD_RESET_RATE_LIMIT } from '../constants';
 
 interface RateLimitEntry {
   count: number;
   resetTime: number;
 }
+
+const PASSWORD_RESET_ENDPOINTS = new Set([
+  'POST:/auth/forgot-password',
+  'POST:/auth/forgot-password/validate-token',
+  'POST:/auth/forgot-password/reset',
+]);
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
@@ -21,24 +28,23 @@ export class RateLimitGuard implements CanActivate {
     const clientId = this.getClientId(request);
     const endpoint = this.getEndpoint(request);
 
-    // Configurações específicas por endpoint
     const config = this.getRateLimitConfig(endpoint);
 
     if (!config) {
-      return true; // Sem rate limit para este endpoint
+      return true;
     }
 
-    const key = `${clientId}:${endpoint}`;
+    const emailKey = this.getEmailKey(request, endpoint);
+    const key = emailKey
+      ? `${clientId}:${emailKey}:${endpoint}`
+      : `${clientId}:${endpoint}`;
     const now = Date.now();
 
-    // Limpa entradas expiradas
     this.cleanupExpiredEntries();
 
-    // Verifica rate limit
     const entry = this.rateLimitStore.get(key);
 
     if (!entry || now > entry.resetTime) {
-      // Primeira requisição ou janela expirada
       this.rateLimitStore.set(key, {
         count: 1,
         resetTime: now + config.windowMs,
@@ -47,19 +53,17 @@ export class RateLimitGuard implements CanActivate {
     }
 
     if (entry.count >= config.maxAttempts) {
-      throw new UnauthorizedException(AUTH_MESSAGES.ERROR.TOO_MANY_ATTEMPTS);
+      throw new HttpException(
+        AUTH_MESSAGES.ERROR.TOO_MANY_ATTEMPTS,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
 
-    // Incrementa contador
     entry.count++;
     return true;
   }
 
-  /**
-   * Obtém identificador único do cliente
-   */
   private getClientId(request: Request): string {
-    // Prioriza IP real (considerando proxy)
     const ip =
       request.ip ||
       request.connection.remoteAddress ||
@@ -69,18 +73,29 @@ export class RateLimitGuard implements CanActivate {
     return ip.toString();
   }
 
-  /**
-   * Obtém o endpoint da requisição
-   */
   private getEndpoint(request: Request): string {
     return `${request.method}:${request.path}`;
   }
 
-  /**
-   * Obtém configuração de rate limit por endpoint
-   */
+  private getEmailKey(request: Request, endpoint: string): string | null {
+    if (!PASSWORD_RESET_ENDPOINTS.has(endpoint)) {
+      return null;
+    }
+
+    const body = request.body as { email?: string } | undefined;
+    const email = body?.email?.trim().toLowerCase();
+    return email || 'no-email';
+  }
+
   private getRateLimitConfig(endpoint: string) {
-    const configs = {
+    if (PASSWORD_RESET_ENDPOINTS.has(endpoint)) {
+      return {
+        maxAttempts: PASSWORD_RESET_RATE_LIMIT.MAX_ATTEMPTS,
+        windowMs: PASSWORD_RESET_RATE_LIMIT.WINDOW_MS,
+      };
+    }
+
+    const configs: Record<string, { maxAttempts: number; windowMs: number }> = {
       'POST:/auth/login': {
         maxAttempts: AUTH_CONSTANTS.RATE_LIMIT.LOGIN_MAX_ATTEMPTS,
         windowMs: AUTH_CONSTANTS.RATE_LIMIT.LOGIN_WINDOW_MS,
@@ -89,22 +104,11 @@ export class RateLimitGuard implements CanActivate {
         maxAttempts: AUTH_CONSTANTS.RATE_LIMIT.REFRESH_MAX_ATTEMPTS,
         windowMs: AUTH_CONSTANTS.RATE_LIMIT.REFRESH_WINDOW_MS,
       },
-      'POST:/auth/forgot-password': {
-        maxAttempts: 20, 
-        windowMs: 15 * 60 * 1000, // 15 minutos
-      },
-      'POST:/auth/reset-password': {
-        maxAttempts: 20,
-        windowMs: 15 * 60 * 1000, // 15 minutos
-      },
     };
 
     return configs[endpoint];
   }
 
-  /**
-   * Limpa entradas expiradas do store
-   */
   private cleanupExpiredEntries(): void {
     const now = Date.now();
 
@@ -115,11 +119,8 @@ export class RateLimitGuard implements CanActivate {
     });
   }
 
-  /**
-   * Reseta rate limit para um cliente específico (útil para testes)
-   */
   resetClient(clientId: string): void {
-    this.rateLimitStore.forEach((entry, key) => {
+    this.rateLimitStore.forEach((_, key) => {
       if (key.startsWith(clientId)) {
         this.rateLimitStore.delete(key);
       }

@@ -89,7 +89,7 @@ Content-Type: {{contentType}}
 
 ### 4.2 Validação de senha fraca (Response 400)
 # Deve retornar detalhes de validação
-POST {{baseUrl}}/auth/reset-password
+POST {{baseUrl}}/auth/forgot-password/reset
 Content-Type: {{contentType}}
 
 {
