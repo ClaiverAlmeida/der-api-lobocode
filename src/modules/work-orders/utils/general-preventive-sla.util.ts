@@ -6,15 +6,37 @@ export const WARNING_DAYS_BEFORE_DUE = 3;
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-export function diasRestantesAteFimDoPrazo(
+function ymdFromCampoDate(dueDate: Date): string {
+  const y = dueDate.getUTCFullYear();
+  const mo = dueDate.getUTCMonth() + 1;
+  const d = dueDate.getUTCDate();
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function ymdAgoraCivilBrt(agora: Date): string {
+  const brt = new Date(agora.getTime() - 3 * 60 * 60 * 1000);
+  const y = brt.getUTCFullYear();
+  const mo = brt.getUTCMonth() + 1;
+  const d = brt.getUTCDate();
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function diffDiasCivisYmd(inicioYmd: string, fimYmd: string): number {
+  const parse = (ymd: string) => {
+    const y = Number(ymd.slice(0, 4));
+    const mo = Number(ymd.slice(5, 7));
+    const d = Number(ymd.slice(8, 10));
+    return Date.UTC(y, mo - 1, d);
+  };
+  return Math.round((parse(fimYmd) - parse(inicioYmd)) / MS_PER_DAY);
+}
+
+/** Dias civis entre hoje (BRT) e o dia do prazo — alinhado ao total exibido no banner. */
+export function diasRestantesCivisAtePrazo(
   dueDate: Date,
   agora: Date = new Date(),
-): number | null {
-  const fim = instanteFimDoPrazoAPartirDoCampoDate(dueDate);
-  if (!fim) return null;
-  const diffMs = fim.getTime() - agora.getTime();
-  if (diffMs < 0) return 0;
-  return Math.ceil(diffMs / MS_PER_DAY);
+): number {
+  return Math.max(0, diffDiasCivisYmd(ymdAgoraCivilBrt(agora), ymdFromCampoDate(dueDate)));
 }
 
 export function calcularSlaStatusGeralPreventiva(
@@ -47,11 +69,8 @@ export function calcularSlaStatusGeralPreventiva(
     return WorkOrderSlaStatus.OVERDUE;
   }
 
-  const diasRestantes = diasRestantesAteFimDoPrazo(dueDate, agora);
-  if (
-    diasRestantes != null &&
-    diasRestantes <= WARNING_DAYS_BEFORE_DUE
-  ) {
+  const diasRestantes = diasRestantesCivisAtePrazo(dueDate, agora);
+  if (diasRestantes <= WARNING_DAYS_BEFORE_DUE) {
     return WorkOrderSlaStatus.WARNING;
   }
 
