@@ -327,11 +327,6 @@ model Regional {
   color  String
   status RegionalStatus @default(ACTIVE)
 
-  /**
-   * Raio de atuação no mapa (quilômetros), em torno de latitude/longitude.
-   */
-  radiusKm Float @default(55)
-
   latitude  Float?
   longitude Float?
   address   Json?
