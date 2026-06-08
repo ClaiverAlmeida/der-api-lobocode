@@ -11,6 +11,7 @@ import {
   DEFAULT_CORRECTIVE_SLA_SECONDS,
   DEFAULT_WINDOW_END,
   DEFAULT_WINDOW_START,
+  empacotarJanelaSla,
   NEAR_BREACH_RATIO,
   normalizarConfigSlaEmpresa,
   ONE_HOUR_USEFUL_SECONDS,
@@ -51,6 +52,8 @@ export interface CorrectiveSlaPersistPayload {
   slaDeadlineAt: Date | null;
   slaStatusExtended: WorkOrderCorrectiveSlaStatus;
   slaExceededAt: Date | null;
+  /** Janela operacional empacotada (somente OS corretivas). */
+  slaDeadlineHours?: number;
 }
 
 @Injectable()
@@ -93,6 +96,10 @@ export class WorkOrderSlaService {
       slaDeadlineAt,
       slaStatusExtended: WorkOrderCorrectiveSlaStatus.IN_PROGRESS,
       slaExceededAt: null,
+      slaDeadlineHours: empacotarJanelaSla(
+        config.correctiveSlaWindowStart,
+        config.correctiveSlaWindowEnd,
+      ),
     };
   }
 
@@ -100,6 +107,7 @@ export class WorkOrderSlaService {
     ordem: CorrectiveSlaWorkOrderState,
     companyConfig: CorrectiveSlaCompanyConfig,
     agora: Date = new Date(),
+    opcoes?: { preservarDeadlinePersistido?: boolean },
   ): CorrectiveSlaSnapshot | null {
     if (!this.ehOsCorretiva(ordem.type)) {
       return null;
@@ -121,6 +129,7 @@ export class WorkOrderSlaService {
       budget,
       remaining,
       config,
+      opcoes?.preservarDeadlinePersistido ?? false,
     );
 
     let slaExceededAt = ordem.slaExceededAt;
@@ -202,6 +211,10 @@ export class WorkOrderSlaService {
       slaDeadlineAt,
       slaStatusExtended: WorkOrderCorrectiveSlaStatus.PAUSED,
       slaExceededAt,
+      slaDeadlineHours: empacotarJanelaSla(
+        config.correctiveSlaWindowStart,
+        config.correctiveSlaWindowEnd,
+      ),
     };
   }
 
@@ -243,6 +256,10 @@ export class WorkOrderSlaService {
       slaResumedAt: agora,
       slaDeadlineAt,
       slaRemainingSeconds: remaining,
+      slaDeadlineHours: empacotarJanelaSla(
+        config.correctiveSlaWindowStart,
+        config.correctiveSlaWindowEnd,
+      ),
     };
   }
 
@@ -325,13 +342,19 @@ export class WorkOrderSlaService {
     budgetSeconds: number,
     remainingSeconds: number,
     config: CorrectiveSlaCompanyConfig,
+    preservarDeadlinePersistido = false,
   ): Date {
     const { correctiveSlaWindowStart, correctiveSlaWindowEnd } = config;
+
+    if (preservarDeadlinePersistido && ordem.slaDeadlineAt) {
+      return ordem.slaDeadlineAt;
+    }
 
     if (
       ordem.status === WorkOrderStatus.IN_PROGRESS &&
       ordem.slaResumedAt &&
-      remainingSeconds > 0
+      remainingSeconds > 0 &&
+      !preservarDeadlinePersistido
     ) {
       return calcularDeadlineSla(
         ordem.slaResumedAt,

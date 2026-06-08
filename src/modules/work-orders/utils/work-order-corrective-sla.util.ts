@@ -15,6 +15,17 @@ export interface CorrectiveSlaCompanyConfig {
   correctiveSlaWindowEnd: string;
 }
 
+/** Snapshot de SLA persistido na OS (sem novas colunas). */
+export interface CorrectiveSlaOrderSnapshot {
+  slaDeadlineHours?: number | null;
+  slaStartAt?: Date | null;
+  slaDeadlineAt?: Date | null;
+  slaConsumedSeconds?: number | null;
+  slaRemainingSeconds?: number | null;
+}
+
+const WINDOW_PACK_MULTIPLIER = 10000;
+
 export interface BrtDateParts {
   year: number;
   month: number;
@@ -210,6 +221,158 @@ export function calcularDeadlineSla(
   }
 
   return cursor;
+}
+
+function windowTimeToMinutes(value: string): number {
+  const { hour, minute } = parseWindowTime(value);
+  return hour * 60 + minute;
+}
+
+function minutesToWindowTime(minutes: number): string {
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+/**
+ * Em OS corretivas, `slaDeadlineHours` armazena a janela operacional empacotada:
+ * startMinutes * 10000 + endMinutes (minutos desde meia-noite, BRT).
+ */
+export function empacotarJanelaSla(
+  windowStart: string,
+  windowEnd: string,
+): number {
+  const startMinutes = windowTimeToMinutes(windowStart);
+  const endMinutes = windowTimeToMinutes(windowEnd);
+  return startMinutes * WINDOW_PACK_MULTIPLIER + endMinutes;
+}
+
+export function desempacotarJanelaSla(packed: number | null | undefined): {
+  windowStart: string;
+  windowEnd: string;
+} | null {
+  if (packed == null || !Number.isFinite(packed) || packed <= 0) {
+    return null;
+  }
+  const startMinutes = Math.floor(packed / WINDOW_PACK_MULTIPLIER);
+  const endMinutes = packed % WINDOW_PACK_MULTIPLIER;
+  if (
+    startMinutes < 0 ||
+    startMinutes >= 24 * 60 ||
+    endMinutes <= 0 ||
+    endMinutes >= 24 * 60 ||
+    startMinutes >= endMinutes
+  ) {
+    return null;
+  }
+  return {
+    windowStart: minutesToWindowTime(startMinutes),
+    windowEnd: minutesToWindowTime(endMinutes),
+  };
+}
+
+export function derivarBudgetSegundosDaOrdem(
+  ordem: Pick<
+    CorrectiveSlaOrderSnapshot,
+    'slaConsumedSeconds' | 'slaRemainingSeconds'
+  >,
+  fallbackSeconds: number,
+): number {
+  const consumed = ordem.slaConsumedSeconds ?? 0;
+  const remaining = ordem.slaRemainingSeconds;
+  if (remaining != null && remaining >= 0) {
+    return Math.max(0, consumed + remaining);
+  }
+  return fallbackSeconds;
+}
+
+/** Candidatos para inferir janela em OS legadas sem pacote. */
+function gerarCandidatosJanelaSla(
+  companyConfig: CorrectiveSlaCompanyConfig,
+): Array<{ windowStart: string; windowEnd: string }> {
+  const empresa = normalizarConfigSlaEmpresa(companyConfig);
+  const padrao = normalizarConfigSlaEmpresa({});
+  const candidatos = [
+    {
+      windowStart: padrao.correctiveSlaWindowStart,
+      windowEnd: padrao.correctiveSlaWindowEnd,
+    },
+    {
+      windowStart: empresa.correctiveSlaWindowStart,
+      windowEnd: empresa.correctiveSlaWindowEnd,
+    },
+  ];
+  const vistos = new Set<string>();
+  return candidatos.filter((c) => {
+    const key = `${c.windowStart}|${c.windowEnd}`;
+    if (vistos.has(key)) return false;
+    vistos.add(key);
+    return true;
+  });
+}
+
+export function inferirJanelaSlaPorPrazo(params: {
+  slaStartAt: Date;
+  slaDeadlineAt: Date;
+  budgetSeconds: number;
+  companyConfig: CorrectiveSlaCompanyConfig;
+}): { windowStart: string; windowEnd: string } | null {
+  const { slaStartAt, slaDeadlineAt, budgetSeconds, companyConfig } = params;
+  if (budgetSeconds <= 0) {
+    return null;
+  }
+  for (const candidato of gerarCandidatosJanelaSla(companyConfig)) {
+    const projetado = calcularDeadlineSla(
+      slaStartAt,
+      budgetSeconds,
+      candidato.windowStart,
+      candidato.windowEnd,
+    );
+    if (projetado.getTime() === slaDeadlineAt.getTime()) {
+      return candidato;
+    }
+  }
+  return null;
+}
+
+/** Resolve config efetiva da OS (congelada), com fallback para empresa/OS legada. */
+export function resolverConfigSlaDaOrdem(
+  ordem: CorrectiveSlaOrderSnapshot,
+  companyConfig: CorrectiveSlaCompanyConfig,
+): CorrectiveSlaCompanyConfig {
+  const empresa = normalizarConfigSlaEmpresa(companyConfig);
+  const budget = derivarBudgetSegundosDaOrdem(ordem, empresa.correctiveSlaDefaultSeconds);
+
+  const empacotado = desempacotarJanelaSla(ordem.slaDeadlineHours);
+  if (empacotado) {
+    return normalizarConfigSlaEmpresa({
+      correctiveSlaDefaultSeconds: budget,
+      correctiveSlaWindowStart: empacotado.windowStart,
+      correctiveSlaWindowEnd: empacotado.windowEnd,
+    });
+  }
+
+  if (ordem.slaStartAt && ordem.slaDeadlineAt && budget > 0) {
+    const inferida = inferirJanelaSlaPorPrazo({
+      slaStartAt: ordem.slaStartAt,
+      slaDeadlineAt: ordem.slaDeadlineAt,
+      budgetSeconds: budget,
+      companyConfig: empresa,
+    });
+    if (inferida) {
+      return normalizarConfigSlaEmpresa({
+        correctiveSlaDefaultSeconds: budget,
+        correctiveSlaWindowStart: inferida.windowStart,
+        correctiveSlaWindowEnd: inferida.windowEnd,
+      });
+    }
+  }
+
+  return normalizarConfigSlaEmpresa({
+    correctiveSlaDefaultSeconds: budget,
+    correctiveSlaWindowStart: empresa.correctiveSlaWindowStart,
+    correctiveSlaWindowEnd: empresa.correctiveSlaWindowEnd,
+  });
 }
 
 export function normalizarConfigSlaEmpresa(

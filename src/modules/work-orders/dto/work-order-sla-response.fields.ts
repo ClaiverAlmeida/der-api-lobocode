@@ -13,8 +13,11 @@ export interface WorkOrderCorrectiveSlaResponseFields {
   slaDeadlineAt: string | null;
   slaStatusExtended: WorkOrderCorrectiveSlaStatus | null;
   slaExceededAt: string | null;
-  /** Orçamento total em segundos (configuração da empresa no momento da leitura). */
+  /** Orçamento total em segundos (congelado na OS). */
   correctiveSlaTotalSeconds: number | null;
+  /** Janela operacional congelada na OS (campo virtual de resposta). */
+  correctiveSlaWindowStart: string | null;
+  correctiveSlaWindowEnd: string | null;
 }
 
 export function isCorrectiveWorkOrderType(
