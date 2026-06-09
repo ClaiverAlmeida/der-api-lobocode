@@ -148,6 +148,17 @@ enum NotificationTargetType {
   CUSTOM
 }
 
+enum PlanningExecutionStatus {
+  PENDING
+  COMPLETED
+}
+
+// Registro de pausa ou retomada da OS (texto completo do motivo em `reason`).
+enum WorkOrderPauseHistoryEventType {
+  PAUSE
+  RESUME
+}
+
 // ===============================================
 // EMPRESA E MULTI-TENANCY
 // ===============================================
@@ -173,6 +184,7 @@ model Company {
   regionals        Regional[]
   workOrderColumns WorkOrderColumn[]
   plannings        Planning[]
+  ipLocations IpLocation[]
 
   files              File[]              @relation("CompanyFiles")
   documents          Document[]          @relation("CompanyDocuments")
@@ -180,9 +192,9 @@ model Company {
   notificationGroups NotificationGroup[] @relation("CompanyNotificationGroups")
   queues             Queue[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
 
   @@index([cnpj])
   @@index([name])
@@ -222,12 +234,12 @@ model User {
   pushSubscriptions       PushSubscription[]        @relation("UserPushSubscriptions")
   workOrderComments       WorkOrderComment[]        @relation("WorkOrderCommentsAuthor")
 
-  workOrdersCreated WorkOrder[] @relation("WorkOrdersCreatedBy")
-  workOrdersUpdated WorkOrder[] @relation("WorkOrdersUpdatedBy")
+  workOrdersCreated   WorkOrder[]          @relation("WorkOrdersCreatedBy")
+  workOrdersUpdated   WorkOrder[]          @relation("WorkOrdersUpdatedBy")
   passwordResetTokens PasswordResetToken[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
   @@index([companyId])
@@ -239,16 +251,17 @@ model User {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
+  id        String    @id @default(cuid())
+  token     String    @unique
   email     String
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   usedAt    DateTime?
-  isUsed    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isUsed    Boolean   @default(false)
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@index([token])
   @@index([email])
@@ -293,7 +306,6 @@ model Asset {
   direction       String?
   status          AssetStatus          @default(ONLINE)
   criticality     AssetCriticality     @default(MEDIUM)
-  ipAddresses     Json?
   lastSignalAt    DateTime?
   connectionType  AssetConnectionType?
   connectionUrl   String?
@@ -374,9 +386,10 @@ model Location {
   regionalId String
   regional   Regional @relation(fields: [regionalId], references: [id], onDelete: Cascade)
 
-  assets     Asset[]
-  workOrders WorkOrder[]
-  plannings  Planning[]
+  assets      Asset[]
+  workOrders  WorkOrder[]
+  plannings   Planning[]
+  ipLocations IpLocation[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -385,6 +398,28 @@ model Location {
   @@index([companyId])
   @@index([code])
   @@index([status])
+  @@index([deletedAt])
+}
+
+model IpLocation {
+  id            String    @id @default(cuid())
+  ip            String
+  description   String?
+  equipmentType AssetType
+
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([id])
+  @@index([locationId])
+  @@index([companyId])
   @@index([deletedAt])
 }
 
@@ -541,12 +576,6 @@ model WorkOrderEvidence {
   @@index([fileId])
 }
 
-// Registro de pausa ou retomada da OS (texto completo do motivo em `reason`).
-enum WorkOrderPauseHistoryEventType {
-  PAUSE
-  RESUME
-}
-
 model WorkOrderPauseHistory {
   id     String @id @default(cuid())
   reason String @db.Text
@@ -565,11 +594,6 @@ model WorkOrderPauseHistory {
   createdAt DateTime @default(now())
 
   @@index([workOrderId])
-}
-
-enum PlanningExecutionStatus {
-  PENDING
-  COMPLETED
 }
 
 model Planning {
