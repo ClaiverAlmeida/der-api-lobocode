@@ -301,7 +301,7 @@ model Asset {
   manufacturer String?
   model        String?
   serialNumber String?
-
+  ipAddresses     Json?
   type            AssetType
   direction       String?
   status          AssetStatus          @default(ONLINE)
@@ -405,7 +405,6 @@ model IpLocation {
   id            String    @id @default(cuid())
   ip            String
   description   String?
-  equipmentType AssetType
 
   locationId String
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
