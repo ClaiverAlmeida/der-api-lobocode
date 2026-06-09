@@ -1,11 +1,15 @@
 import {
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { AssetIpAddressDto } from './asset-ip-address.dto';
 import {
   AssetCriticality,
   AssetConnectionType,
@@ -92,4 +96,10 @@ export class CreateAssetDto {
   @IsOptional()
   @IsString({ message: VALIDATION_MESSAGES.FORMAT.FIELD_INVALID })
   connectionToken?: string;
+
+  @IsOptional()
+  @IsArray({ message: VALIDATION_MESSAGES.FORMAT.ARRAY_INVALID })
+  @ValidateNested({ each: true })
+  @Type(() => AssetIpAddressDto)
+  ipAddresses?: AssetIpAddressDto[];
 }
