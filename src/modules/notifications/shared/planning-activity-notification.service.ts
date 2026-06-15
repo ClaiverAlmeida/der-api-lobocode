@@ -38,8 +38,8 @@ export class PlanningActivityNotificationService {
     const equipmentLabel = formatAssetTypeLabel(params.planningEquipmentType);
 
     await this.notificationService.criar({
-      title: 'Nova tarefa atribuída a você',
-      message: `${actorName} atribuiu você ao planejamento "${params.planningTitle}" (${equipmentLabel}).`,
+      title: 'Novo planejamento atribuído a você',
+      message: `${actorName} atribuiu o planejamento "${params.planningTitle}" (${equipmentLabel}) a você.`,
       entityType: 'planning',
       entityId: params.planningId,
       userId: params.actorUserId,
