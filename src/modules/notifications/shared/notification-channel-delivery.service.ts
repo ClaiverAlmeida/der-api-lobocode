@@ -100,7 +100,7 @@ export class NotificationChannelDeliveryService {
       );
     }
 
-    // TEMPORÁRIO: e-mail desabilitado na criação de OS (WebSocket e push permanecem).
+    // E-mail respeita `skipEmail` (padrão: desligado). Recuperação de senha não usa este serviço.
     if (!skipEmail) {
       await Promise.all(
         emailRecipients.map((recipient) =>

@@ -14,6 +14,7 @@ export class NotificationHelper {
     titulo: string,
     criadoPorUserId: string,
     companyId?: string,
+    skipEmail?: boolean,
   ) {
     return this.notificationService.criar({
       title: `Novo(a) ${entityType} criado(a)`,
@@ -22,6 +23,7 @@ export class NotificationHelper {
       entityId,
       userId: criadoPorUserId,
       companyId,
+      skipEmail,
     });
   }
 
@@ -34,6 +36,7 @@ export class NotificationHelper {
     titulo: string,
     criadoPorUserId: string,
     companyId?: string,
+    skipEmail?: boolean,
   ) {
     return this.notificationService.criar({
       title: `${entityType} atualizado(a)`,
@@ -42,6 +45,7 @@ export class NotificationHelper {
       entityId,
       userId: criadoPorUserId,
       companyId,
+      skipEmail,
     });
   }
 
@@ -55,6 +59,7 @@ export class NotificationHelper {
     companyId?: string,
     entityType?: string,
     entityId?: string,
+    skipEmail?: boolean,
   ) {
     return this.notificationService.criar({
       title: titulo,
@@ -63,6 +68,7 @@ export class NotificationHelper {
       entityId,
       userId: criadoPorUserId,
       companyId,
+      skipEmail,
     });
   }
 
@@ -78,6 +84,7 @@ export class NotificationHelper {
     entityId: string,
     criadoPorUserId: string,
     companyId?: string,
+    skipEmail?: boolean,
   ) {
     if (!userIds || userIds.length === 0) {
       return null;
@@ -90,7 +97,8 @@ export class NotificationHelper {
       entityId,
       userId: criadoPorUserId,
       companyId,
-      recipients: userIds, // Passar os recipients específicos
+      recipients: userIds,
+      skipEmail,
     });
   }
 }

@@ -39,6 +39,7 @@ export class WorkOrderActivityNotificationService {
     actorUserId: string;
     companyId?: string;
     assignedUserId: string;
+    skipEmail?: boolean;
   }) {
     const recipients = await this.filtrarDestinatariosOs(
       params.workOrderId,
@@ -62,6 +63,7 @@ export class WorkOrderActivityNotificationService {
       userId: params.actorUserId,
       companyId: params.companyId,
       recipients,
+      skipEmail: params.skipEmail,
     });
   }
 
@@ -145,6 +147,7 @@ export class WorkOrderActivityNotificationService {
     actorUserId: string;
     companyId?: string;
     removedUserId: string;
+    skipEmail?: boolean;
   }) {
     const recipients = await this.filtrarDestinatariosOs(
       params.workOrderId,
@@ -168,6 +171,7 @@ export class WorkOrderActivityNotificationService {
       userId: params.actorUserId,
       companyId: params.companyId,
       recipients,
+      skipEmail: params.skipEmail,
     });
   }
 
@@ -365,6 +369,7 @@ export class WorkOrderActivityNotificationService {
         userId: 'system',
         companyId,
         recipients,
+        skipEmail: true,
       });
     }
   }
