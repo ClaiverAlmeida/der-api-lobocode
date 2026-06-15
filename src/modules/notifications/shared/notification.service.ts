@@ -9,6 +9,7 @@ import { NotificationGateway } from '../notification.gateway';
 import { NotificationChannelDeliveryService } from './notification-channel-delivery.service';
 import { WorkOrderNotificationScopeService } from '../../../shared/regional-scope/work-order-notification-scope.service';
 import { Roles, User } from '@prisma/client';
+import { SKIP_NOTIFICATION_EMAIL_BY_DEFAULT } from './notification-email.constants';
 
 @Injectable()
 export class NotificationService {
@@ -75,11 +76,12 @@ export class NotificationService {
     };
 
     // 7. Enviar notificação em tempo real para usuários conectados
+    const skipEmail = data.skipEmail ?? SKIP_NOTIFICATION_EMAIL_BY_DEFAULT;
     await this.enviarNotificacaoTempoReal(
       notificationResponse,
       targetUserIds,
       data.companyId,
-      data.skipEmail,
+      skipEmail,
     );
 
     return notificationResponse;
