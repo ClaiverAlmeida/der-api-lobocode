@@ -42,44 +42,44 @@ function statusEncerraConsumoSlaNegativo(status: WorkOrderStatus): boolean {
 }
 
 /**
- * Atraso excedente alinhado ao par Limite × Conclusão (tempo útil após o deadline).
- * Evita divergência por arredondamento acumulado em consumido − orçamento.
+ * Atraso (SLA negativo) contado em tempo CORRIDO (24h/dia) a partir do Limite —
+ * começa quando o SLA Positivo termina (`slaDeadlineAt`) e NÃO para na janela
+ * operacional nem nas pausas. Encerradas congelam na conclusão; ativas e
+ * pausadas continuam correndo até "agora".
  */
 export function calcularSegundosAtrasoExcedenteCorretiva(
   ordem: CorrectiveSlaNegativeState,
-  config: CorrectiveSlaCompanyConfig,
   consumed: number,
   budgetSeconds: number,
   agora: Date,
 ): number {
   const porConsumo = Math.max(0, consumed - budgetSeconds);
-  const { correctiveSlaWindowStart, correctiveSlaWindowEnd } = config;
-
-  if (ordem.status === WorkOrderStatus.PAUSED) {
-    return porConsumo;
-  }
 
   const slaDeadlineAt = ordem.slaDeadlineAt;
   if (!slaDeadlineAt) {
     return porConsumo;
   }
 
+  // Pausada antes de consumir o orçamento: o SLA Positivo ainda não terminou,
+  // então não há SLA Negativo — mesmo que o relógio passe do limite persistido.
+  if (ordem.status === WorkOrderStatus.PAUSED && consumed < budgetSeconds) {
+    return 0;
+  }
+
+  // Encerradas usam a conclusão; ativas e pausadas usam "agora" (corrido).
   const fimReferencia = statusEncerraConsumoSlaNegativo(ordem.status)
     ? resolverFimConsumoSlaNegativo(ordem, agora)
     : agora;
 
-  if (!fimReferencia || fimReferencia.getTime() <= slaDeadlineAt.getTime()) {
-    return porConsumo;
+  if (fimReferencia.getTime() <= slaDeadlineAt.getTime()) {
+    return 0;
   }
 
-  const porLimite = calcularSegundosUteis(
-    slaDeadlineAt,
-    fimReferencia,
-    correctiveSlaWindowStart,
-    correctiveSlaWindowEnd,
+  // Tempo CORRIDO (24h/dia) entre o Limite e o marco final — sem desconto de
+  // janela operacional nem de pausas.
+  return Math.floor(
+    (fimReferencia.getTime() - slaDeadlineAt.getTime()) / 1000,
   );
-
-  return Math.max(porConsumo, porLimite);
 }
 
 export interface CorrectiveSlaNegativeSnapshot {
@@ -177,7 +177,6 @@ export function calcularSlaNegativoCorretiva(
   const consumed = calcularConsumidoEfetivoCorretiva(ordem, config, agora);
   const overdueSeconds = calcularSegundosAtrasoExcedenteCorretiva(
     ordem,
-    config,
     consumed,
     budgetSeconds,
     agora,
@@ -199,14 +198,7 @@ export function calcularSlaNegativoCorretiva(
     };
   }
 
-  if (ordem.status === WorkOrderStatus.PAUSED) {
-    return {
-      isOverdue: true,
-      overdueSeconds,
-      overdueStatus: 'PAUSED',
-    };
-  }
-
+  // Pausada também acumula SLA Negativo (corrido 24h), portanto continua ativo.
   return {
     isOverdue: true,
     overdueSeconds,

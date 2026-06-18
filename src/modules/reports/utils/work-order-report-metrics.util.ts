@@ -213,6 +213,20 @@ export function resolverSlaBucketGeralPreventiva(
   return 'ON_TIME';
 }
 
+/**
+ * Bucket da OS corretiva alinhado ao cálculo ao vivo (isLate é a fonte da verdade).
+ * Evita divergência com o status persistido, que fica defasado em OS abertas que
+ * estouram o SLA enquanto não há transição de estado registrada no banco.
+ */
+export function resolverSlaBucketCorretivaLive(
+  isLate: boolean,
+  slaStatusExtended: string | null,
+): ReportSlaBucket {
+  if (isLate) return 'OVERDUE';
+  if (slaStatusExtended === 'NEAR_BREACH') return 'NEAR_DUE';
+  return 'ON_TIME';
+}
+
 export function calcularMetricasCorretiva(
   ordem: WorkOrderMetricsInput,
   agora: Date = new Date(),
@@ -266,8 +280,8 @@ export function calcularMetricasCorretiva(
     agora,
   );
 
-  const workedSeconds = consumedTotalSeconds;
-
+  // Tempo de execução do trabalho: relógio corrido 24h/dia desde o início
+  // (sem parar fora da janela), mas descontando os períodos de pausa da OS.
   let totalExecutionSeconds = 0;
   if (ordem.startedAt && fimExecucao) {
     const intervalosAtivos = calcularIntervalosAtivosExecucao(
@@ -285,6 +299,10 @@ export function calcularMetricasCorretiva(
     : Math.max(0, budget - consumedTotalSeconds);
   const withinSlaSeconds = slaPositiveSeconds;
   const slaNegativeSeconds = negativo.overdueSeconds;
+  // Consumo SLA = SLA Positivo (tempo útil consumido, limitado ao orçamento;
+  // para na janela e nas pausas) + SLA Negativo (corrido 24h após o vencimento).
+  const slaPositiveConsumed = Math.min(consumedTotalSeconds, budget);
+  const workedSeconds = slaPositiveConsumed + slaNegativeSeconds;
   const latePercentOfSla =
     budget > 0 ? Number(((slaNegativeSeconds / budget) * 100).toFixed(1)) : 0;
   return {
@@ -304,7 +322,12 @@ export function calcularMetricasCorretiva(
 export function calcularMetricasDueDate(
   ordem: Pick<
     WorkOrderMetricsInput,
-    'dueDate' | 'status' | 'completedAt' | 'slaStatus'
+    | 'dueDate'
+    | 'status'
+    | 'completedAt'
+    | 'slaStatus'
+    | 'slaPausedAt'
+    | 'pauseHistories'
   >,
   agora: Date = new Date(),
 ): WorkOrderReportDueDateMetrics {
@@ -336,12 +359,19 @@ export function calcularMetricasDueDate(
       remainingSeconds = dias * 24 * 60 * 60;
     }
   }
+  const pausas = calcularMetricasPausasRetornos(
+    ordem.pauseHistories ?? [],
+    ordem.status,
+    ordem.slaPausedAt ?? null,
+    agora,
+  );
   return {
     slaBucket: resolverSlaBucketGeralPreventiva(slaStatus),
     slaStatus,
     dueDate: ordem.dueDate?.toISOString().slice(0, 10) ?? null,
     remainingSeconds,
     exceededSeconds,
+    ...pausas,
   };
 }
 

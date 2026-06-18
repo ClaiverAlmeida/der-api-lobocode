@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   Prisma,
   WorkOrderCorrectiveSlaStatus,
+  WorkOrderPauseHistoryEventType,
   WorkOrderSlaStatus,
   WorkOrderStatus,
   WorkOrderType,
@@ -31,8 +32,9 @@ import {
   calcularMetricasCorretiva,
   calcularMetricasDueDate,
   normalizarConfigEmpresaRelatorio,
-  resolverSlaBucketCorretiva,
+  resolverSlaBucketCorretivaLive,
 } from './utils/work-order-report-metrics.util';
+import { resolverConfigSlaDaOrdem } from '../work-orders/utils/work-order-corrective-sla.util';
 
 const EXPORT_MAX_ROWS = 10_000;
 const IN_PROGRESS_STATUSES: WorkOrderStatus[] = [
@@ -72,6 +74,63 @@ type WorkOrderComRelacoes = Awaited<
   ReturnType<WorkOrderReportsService['buscarRegistrosRelatorio']>
 >[number];
 
+/** Campos mínimos para recalcular o SLA corretivo ao vivo no resumo. */
+const RESUMO_CORRETIVA_SLA_SELECT = {
+  type: true,
+  status: true,
+  startedAt: true,
+  completedAt: true,
+  finalApprovalCompletedAt: true,
+  slaStartAt: true,
+  slaPausedAt: true,
+  slaResumedAt: true,
+  slaConsumedSeconds: true,
+  slaRemainingSeconds: true,
+  slaDeadlineAt: true,
+  slaDeadlineHours: true,
+  slaStatusExtended: true,
+  dueDate: true,
+  slaStatus: true,
+  workOrderPauseHistories: {
+    select: { eventType: true, createdAt: true },
+    orderBy: { createdAt: 'asc' as const },
+  },
+  company: {
+    select: {
+      correctiveSlaDefaultSeconds: true,
+      correctiveSlaWindowStart: true,
+      correctiveSlaWindowEnd: true,
+    },
+  },
+} satisfies Prisma.WorkOrderSelect;
+
+interface EntradaMetricasCorretivaRegistro {
+  type: WorkOrderType;
+  status: WorkOrderStatus;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  finalApprovalCompletedAt: Date | null;
+  slaStartAt: Date | null;
+  slaPausedAt: Date | null;
+  slaResumedAt: Date | null;
+  slaConsumedSeconds: number | null;
+  slaRemainingSeconds: number | null;
+  slaDeadlineAt: Date | null;
+  slaDeadlineHours: number | null;
+  slaStatusExtended: WorkOrderCorrectiveSlaStatus | null;
+  dueDate: Date | null;
+  slaStatus: WorkOrderSlaStatus | null;
+  workOrderPauseHistories: Array<{
+    eventType: WorkOrderPauseHistoryEventType;
+    createdAt: Date;
+  }>;
+  company: {
+    correctiveSlaDefaultSeconds: number | null;
+    correctiveSlaWindowStart: string | null;
+    correctiveSlaWindowEnd: string | null;
+  } | null;
+}
+
 @Injectable()
 export class WorkOrderReportsService {
   constructor(
@@ -108,6 +167,7 @@ export class WorkOrderReportsService {
   async obterResumo(
     filtros: WorkOrderReportFilterDto,
   ): Promise<WorkOrderReportSummary> {
+    const agora = new Date();
     const where = this.montarWhere(filtros);
     const whereCorretiva: Prisma.WorkOrderWhereInput = {
       ...where,
@@ -117,10 +177,6 @@ export class WorkOrderReportsService {
       totalCorretivas,
       emAndamento,
       finalizadas,
-      atrasadas,
-      slaPositivo,
-      slaNegativo,
-      concluidasNoPrazo,
       totalPausasCount,
       resumeCount,
     ] = await this.prisma.$transaction([
@@ -137,112 +193,51 @@ export class WorkOrderReportsService {
           status: WorkOrderStatus.COMPLETED,
         },
       }),
-      this.prisma.workOrder.count({
-        where: {
-          ...whereCorretiva,
-          OR: [
-            { slaStatusExtended: { in: CORRECTIVE_SLA_NEGATIVE_STATUSES } },
-            {
-              status: { in: IN_PROGRESS_STATUSES },
-              slaStatusExtended: WorkOrderCorrectiveSlaStatus.BREACHED,
-            },
-          ],
-        },
-      }),
-      this.prisma.workOrder.count({
-        where: {
-          ...whereCorretiva,
-          slaStatusExtended: { in: CORRECTIVE_SLA_POSITIVE_STATUSES },
-        },
-      }),
-      this.prisma.workOrder.count({
-        where: {
-          ...whereCorretiva,
-          slaStatusExtended: { in: CORRECTIVE_SLA_NEGATIVE_STATUSES },
-        },
-      }),
-      this.prisma.workOrder.count({
-        where: {
-          ...whereCorretiva,
-          slaStatusExtended: WorkOrderCorrectiveSlaStatus.COMPLETED_ON_TIME,
-        },
-      }),
       this.prisma.workOrderPauseHistory.count({
         where: {
           eventType: 'PAUSE',
-          workOrder: where,
+          workOrder: whereCorretiva,
         },
       }),
       this.prisma.workOrderPauseHistory.count({
         where: {
           eventType: 'RESUME',
-          workOrder: where,
+          workOrder: whereCorretiva,
         },
       }),
     ]);
-    const totalPausas = totalPausasCount;
-    const registrosPausa = await this.prisma.workOrder.findMany({
-      where: {
-        ...where,
-        type: WorkOrderType.CORRECTIVE,
-        workOrderPauseHistories: { some: {} },
-      },
-      take: 500,
-      select: {
-        type: true,
-        status: true,
-        startedAt: true,
-        completedAt: true,
-        slaStartAt: true,
-        slaPausedAt: true,
-        slaResumedAt: true,
-        slaConsumedSeconds: true,
-        slaRemainingSeconds: true,
-        slaDeadlineAt: true,
-        slaDeadlineHours: true,
-        slaStatusExtended: true,
-        dueDate: true,
-        slaStatus: true,
-        workOrderPauseHistories: {
-          select: { eventType: true, createdAt: true },
-          orderBy: { createdAt: 'asc' },
-        },
-        company: {
-          select: {
-            correctiveSlaDefaultSeconds: true,
-            correctiveSlaWindowStart: true,
-            correctiveSlaWindowEnd: true,
-          },
-        },
-      },
+    const corretivas = await this.prisma.workOrder.findMany({
+      where: whereCorretiva,
+      take: EXPORT_MAX_ROWS,
+      select: RESUMO_CORRETIVA_SLA_SELECT,
     });
-    const totalPausedSeconds = registrosPausa.reduce((acc, registro) => {
-      const metricas = calcularMetricasCorretiva({
-        type: registro.type,
-        status: registro.status,
-        startedAt: registro.startedAt,
-        completedAt: registro.completedAt,
-        slaStartAt: registro.slaStartAt,
-        slaPausedAt: registro.slaPausedAt,
-        slaResumedAt: registro.slaResumedAt,
-        slaConsumedSeconds: registro.slaConsumedSeconds,
-        slaRemainingSeconds: registro.slaRemainingSeconds,
-        slaDeadlineAt: registro.slaDeadlineAt,
-        slaDeadlineHours: registro.slaDeadlineHours,
-        slaStatusExtended: registro.slaStatusExtended,
-        dueDate: registro.dueDate,
-        slaStatus: registro.slaStatus,
-        pauseHistories: registro.workOrderPauseHistories,
-        companyConfig: normalizarConfigEmpresaRelatorio(registro.company),
-      });
-      return acc + metricas.totalPausedSeconds;
-    }, 0);
+    let atrasadas = 0;
+    let slaPositivo = 0;
+    let slaNegativo = 0;
+    let totalPausedSeconds = 0;
+    for (const registro of corretivas) {
+      const metricas = calcularMetricasCorretiva(
+        this.construirEntradaMetricasCorretiva(registro),
+        agora,
+      );
+      totalPausedSeconds += metricas.totalPausedSeconds;
+      if (metricas.isLate) {
+        slaNegativo += 1;
+        atrasadas += 1;
+        continue;
+      }
+      if (registro.slaStartAt) {
+        slaPositivo += 1;
+      }
+    }
+    // Cumprimento = todas as corretivas COM SLA: cumpridas (concluídas no prazo
+    // + ativas dentro do prazo) ÷ total com SLA. OS atrasada (mesmo ativa)
+    // derruba o índice.
+    const totalComSla = slaPositivo + slaNegativo;
     const complianceRate =
-      finalizadas > 0
-        ? Number(((concluidasNoPrazo / finalizadas) * 100).toFixed(1))
-        : totalCorretivas > 0
-          ? Number(((slaPositivo / totalCorretivas) * 100).toFixed(1))
-          : 0;
+      totalComSla > 0
+        ? Number(((slaPositivo / totalComSla) * 100).toFixed(1))
+        : 0;
     return {
       corrective: {
         total: totalCorretivas,
@@ -256,7 +251,7 @@ export class WorkOrderReportsService {
         complianceRate,
       },
       pauses: {
-        totalCount: totalPausas,
+        totalCount: totalPausasCount,
         totalPausedSeconds,
       },
       returns: {
@@ -411,6 +406,29 @@ export class WorkOrderReportsService {
     return { [campo]: direction };
   }
 
+  private construirEntradaMetricasCorretiva(
+    registro: EntradaMetricasCorretivaRegistro,
+  ) {
+    return {
+      type: registro.type,
+      status: registro.status,
+      startedAt: registro.startedAt,
+      completedAt: registro.finalApprovalCompletedAt ?? registro.completedAt,
+      slaStartAt: registro.slaStartAt,
+      slaPausedAt: registro.slaPausedAt,
+      slaResumedAt: registro.slaResumedAt,
+      slaConsumedSeconds: registro.slaConsumedSeconds,
+      slaRemainingSeconds: registro.slaRemainingSeconds,
+      slaDeadlineAt: registro.slaDeadlineAt,
+      slaDeadlineHours: registro.slaDeadlineHours,
+      slaStatusExtended: registro.slaStatusExtended,
+      dueDate: registro.dueDate,
+      slaStatus: registro.slaStatus,
+      pauseHistories: registro.workOrderPauseHistories,
+      companyConfig: normalizarConfigEmpresaRelatorio(registro.company),
+    };
+  }
+
   private mapearItem(registro: WorkOrderComRelacoes): WorkOrderReportItem {
     const agora = new Date();
     const companyConfig = normalizarConfigEmpresaRelatorio(registro.company);
@@ -463,25 +481,20 @@ export class WorkOrderReportsService {
     };
     if (registro.type === WorkOrderType.CORRECTIVE) {
       const corrective = calcularMetricasCorretiva(
+        this.construirEntradaMetricasCorretiva(registro),
+        agora,
+      );
+      const correctiveConfig = resolverConfigSlaDaOrdem(
         {
-          type: registro.type,
-          status: registro.status,
-          startedAt: registro.startedAt,
-          completedAt: registro.finalApprovalCompletedAt ?? registro.completedAt,
+          slaDeadlineHours: registro.slaDeadlineHours,
           slaStartAt: registro.slaStartAt,
-          slaPausedAt: registro.slaPausedAt,
-          slaResumedAt: registro.slaResumedAt,
+          slaDeadlineAt: registro.slaDeadlineAt,
           slaConsumedSeconds: registro.slaConsumedSeconds,
           slaRemainingSeconds: registro.slaRemainingSeconds,
-          slaDeadlineAt: registro.slaDeadlineAt,
-          slaDeadlineHours: registro.slaDeadlineHours,
+          slaExceededAt: registro.slaExceededAt,
           slaStatusExtended: registro.slaStatusExtended,
-          dueDate: registro.dueDate,
-          slaStatus: registro.slaStatus,
-          pauseHistories: registro.workOrderPauseHistories,
-          companyConfig,
         },
-        agora,
+        companyConfig,
       );
       base.corrective = corrective;
       base.correctiveLive = {
@@ -493,15 +506,18 @@ export class WorkOrderReportsService {
         slaDeadlineAt: registro.slaDeadlineAt?.toISOString() ?? null,
         slaStatusExtended: registro.slaStatusExtended,
         slaDeadlineHours: registro.slaDeadlineHours,
-        correctiveSlaDefaultSeconds: companyConfig.correctiveSlaDefaultSeconds,
-        correctiveSlaWindowStart: companyConfig.correctiveSlaWindowStart,
-        correctiveSlaWindowEnd: companyConfig.correctiveSlaWindowEnd,
+        correctiveSlaDefaultSeconds: correctiveConfig.correctiveSlaDefaultSeconds,
+        correctiveSlaWindowStart: correctiveConfig.correctiveSlaWindowStart,
+        correctiveSlaWindowEnd: correctiveConfig.correctiveSlaWindowEnd,
         pauseHistories: registro.workOrderPauseHistories.map((entry) => ({
           eventType: entry.eventType,
           createdAt: entry.createdAt.toISOString(),
         })),
       };
-      base.slaBucket = resolverSlaBucketCorretiva(registro.slaStatusExtended);
+      base.slaBucket = resolverSlaBucketCorretivaLive(
+        corrective.isLate,
+        registro.slaStatusExtended,
+      );
       return base;
     }
     const dueDateSla = calcularMetricasDueDate(
@@ -510,10 +526,19 @@ export class WorkOrderReportsService {
         status: registro.status,
         completedAt: registro.completedAt,
         slaStatus: registro.slaStatus,
+        slaPausedAt: registro.slaPausedAt,
+        pauseHistories: registro.workOrderPauseHistories,
       },
       agora,
     );
     base.dueDateSla = dueDateSla;
+    base.dueDateLive = {
+      slaPausedAt: registro.slaPausedAt?.toISOString() ?? null,
+      pauseHistories: registro.workOrderPauseHistories.map((entry) => ({
+        eventType: entry.eventType,
+        createdAt: entry.createdAt.toISOString(),
+      })),
+    };
     base.slaBucket = dueDateSla.slaBucket;
     return base;
   }
