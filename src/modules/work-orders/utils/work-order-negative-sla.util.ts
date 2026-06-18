@@ -42,8 +42,9 @@ function statusEncerraConsumoSlaNegativo(status: WorkOrderStatus): boolean {
 }
 
 /**
- * Atraso excedente alinhado ao par Limite × Conclusão (tempo útil após o deadline).
- * Evita divergência por arredondamento acumulado em consumido − orçamento.
+ * Atraso (SLA negativo) contado em tempo ÚTIL após o limite — é a "sobra" além
+ * do orçamento (consumo − 6h), parando fora da janela operacional assim como o
+ * SLA positivo. Congela no instante da pausa quando a OS está pausada.
  */
 export function calcularSegundosAtrasoExcedenteCorretiva(
   ordem: CorrectiveSlaNegativeState,
@@ -55,23 +56,32 @@ export function calcularSegundosAtrasoExcedenteCorretiva(
   const porConsumo = Math.max(0, consumed - budgetSeconds);
   const { correctiveSlaWindowStart, correctiveSlaWindowEnd } = config;
 
-  if (ordem.status === WorkOrderStatus.PAUSED) {
-    return porConsumo;
-  }
-
   const slaDeadlineAt = ordem.slaDeadlineAt;
   if (!slaDeadlineAt) {
     return porConsumo;
   }
 
-  const fimReferencia = statusEncerraConsumoSlaNegativo(ordem.status)
-    ? resolverFimConsumoSlaNegativo(ordem, agora)
-    : agora;
-
-  if (!fimReferencia || fimReferencia.getTime() <= slaDeadlineAt.getTime()) {
-    return porConsumo;
+  // Marco final do atraso conforme o estado: pausada congela no instante da
+  // pausa, encerradas usam a conclusão e ativas usam "agora".
+  let fimReferencia: Date | null;
+  if (ordem.status === WorkOrderStatus.PAUSED) {
+    fimReferencia = ordem.slaPausedAt ?? agora;
+  } else if (statusEncerraConsumoSlaNegativo(ordem.status)) {
+    fimReferencia = resolverFimConsumoSlaNegativo(ordem, agora);
+  } else {
+    fimReferencia = agora;
   }
 
+  if (!fimReferencia) {
+    return porConsumo;
+  }
+  if (fimReferencia.getTime() <= slaDeadlineAt.getTime()) {
+    return 0;
+  }
+
+  // Tempo ÚTIL após o limite (dentro da janela operacional). Usar como teto
+  // garante atraso contado só em tempo útil e evita que uma base de consumo
+  // corrida/legada infle o atraso com tempo corrido fora da janela.
   const porLimite = calcularSegundosUteis(
     slaDeadlineAt,
     fimReferencia,
@@ -79,7 +89,7 @@ export function calcularSegundosAtrasoExcedenteCorretiva(
     correctiveSlaWindowEnd,
   );
 
-  return Math.max(porConsumo, porLimite);
+  return Math.min(porConsumo, porLimite);
 }
 
 export interface CorrectiveSlaNegativeSnapshot {

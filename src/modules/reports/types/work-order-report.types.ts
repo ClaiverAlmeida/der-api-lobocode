@@ -77,6 +77,22 @@ export interface WorkOrderReportDueDateMetrics {
   dueDate: string | null;
   remainingSeconds: number;
   exceededSeconds: number;
+  pauseCount: number;
+  totalPausedSeconds: number;
+  pausedSeconds: number;
+  firstPauseAt: string | null;
+  lastPauseAt: string | null;
+  returnCount: number;
+  firstReturnAt: string | null;
+  lastReturnAt: string | null;
+}
+
+export interface WorkOrderReportDueDateLiveContext {
+  slaPausedAt: string | null;
+  pauseHistories: Array<{
+    eventType: 'PAUSE' | 'RESUME';
+    createdAt: string;
+  }>;
 }
 
 export interface WorkOrderReportItem {
@@ -99,6 +115,7 @@ export interface WorkOrderReportItem {
   corrective?: WorkOrderReportCorrectiveMetrics;
   correctiveLive?: WorkOrderReportCorrectiveLiveContext;
   dueDateSla?: WorkOrderReportDueDateMetrics;
+  dueDateLive?: WorkOrderReportDueDateLiveContext;
 }
 
 export interface WorkOrderReportSummary {
